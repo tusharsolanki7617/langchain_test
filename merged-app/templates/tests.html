@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assessment Studio | MCQ, Q&A & Image OCR Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<main class="container">
+    <!-- Header -->
+    <header class="app-header">
+        <div class="brand-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+            Task 2, 3, 4 & 5 &mdash; Complete Assessment & OCR Suite
+        </div>
+        <h1 class="app-title">AI <span>Assessment & OCR Studio</span></h1>
+        <p class="app-subtitle">Generate questions via topics or document OCR image uploads, answer interactively or by photographing written answers, and view automated evaluations.</p>
+    </header>
+
+    <!-- Flash Notifications -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="message {{ category }}" role="alert">
+                {% if category == 'success' %}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                {% elif category == 'info' %}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                {% else %}
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                {% endif %}
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- ============================================================== -->
+    <!-- SCREEN 1: EVALUATION SCREEN (TASKS 3, 4 & 5)                   -->
+    <!-- ============================================================== -->
+    {% if evaluation %}
+        <section class="evaluation-section">
+            <!-- Score Banner -->
+            <div class="evaluation-banner {{ evaluation.badge_type }}">
+                <div class="eval-top-row">
+                    <div class="eval-title-wrap">
+                        <h2>Assessment Evaluation</h2>
+                        <p class="eval-remark">{{ evaluation.remark }}</p>
+                    </div>
+
+                    <div class="score-circle-badge {{ evaluation.badge_type }}">
+                        <span class="score-number">{{ evaluation.percentage }}%</span>
+                        <span class="score-sub">{{ evaluation.score }}/{{ evaluation.total }} Score</span>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="eval-stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Topic / Source</div>
+                        <div class="stat-val" style="font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ evaluation.topic }}">
+                            {{ evaluation.topic }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Assessment Type</div>
+                        <div class="stat-val" style="font-size: 14px; text-transform: uppercase;">{{ evaluation.question_type }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Correct Answers</div>
+                        <div class="stat-val correct">{{ evaluation.correct_count }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Wrong / Partial</div>
+                        <div class="stat-val wrong">
+                            {{ evaluation.wrong_count }}
+                            {% if evaluation.partial_count %}
+                                <span style="font-size: 12px; color: var(--medium); font-weight: normal;">({{ evaluation.partial_count }} partial)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <form method="POST" class="eval-actions-bar">
+                    <button type="submit" name="action" value="retake" class="btn-secondary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                        Retake Test
+                    </button>
+                    <button type="submit" name="action" value="new_test" class="btn-primary" style="width: auto; padding: 12px 22px;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Create New Test
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="window.print()">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        Print Results
+                    </button>
+                </form>
+            </div>
+
+            <!-- Detailed Question Breakdown -->
+            <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 18px;">Detailed Evaluation Breakdown</h3>
+            <div class="evaluation-breakdown">
+                {% for q in evaluation.questions %}
+                    {% set is_qa = (q.type == 'qa') %}
+                    
+                    <article class="review-card 
+                        {% if is_qa %}
+                            {% if q.qa_eval.status == 'correct' %}correct
+                            {% elif q.qa_eval.status == 'partial' %}partial
+                            {% else %}wrong{% endif %}
+                        {% else %}
+                            {% if q.is_correct %}correct{% else %}wrong{% endif %}
+                        {% endif %}">
+                        
+                        <div class="review-header">
+                            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                <span class="q-number-pill">Q{{ loop.index }}</span>
+                                <div>
+                                    <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;">
+                                        <span class="pill-badge" style="font-size: 11px; padding: 2px 8px; {% if is_qa %}background: rgba(139,92,246,0.15); color: #c084fc; border: 1px solid rgba(139,92,246,0.3);{% else %}background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3);{% endif %}">
+                                            {{ 'Q&A Concept' if is_qa else 'MCQ' }}
+                                        </span>
+                                        {% if q.ocr_note %}
+                                            <span class="ocr-badge-tag">
+                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                                OCR Transcribed
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <h4 class="q-prompt">{{ q.question }}</h4>
+                                </div>
+                            </div>
+
+                            <!-- Status Badge -->
+                            {% if is_qa %}
+                                {% if q.qa_eval.status == 'correct' %}
+                                    <span class="status-badge correct">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        Correct (+1.0 pt)
+                                    </span>
+                                {% elif q.qa_eval.status == 'partial' %}
+                                    <span class="status-badge partial">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                        Partially Correct (+0.5 pt)
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge wrong">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                        Incorrect (0 pts)
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                {% if q.is_correct %}
+                                    <span class="status-badge correct">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        Correct (+1.0 pt)
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge wrong">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                        {% if q.user_choice %}Wrong (You chose {{ q.user_choice }}){% else %}Unanswered{% endif %}
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+
+                        <!-- Content Display -->
+                        {% if is_qa %}
+                            <!-- Q&A Evaluation View -->
+                            <div class="qa-eval-review">
+                                <div class="qa-response-box user-answer">
+                                    <div class="qa-box-header">
+                                        <span>Your Submitted Answer:</span>
+                                        {% if q.ocr_note %}
+                                            <span style="font-size: 11px; color: #34d399; font-weight: 600;">{{ q.ocr_note }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="qa-box-content">
+                                        {{ q.user_answer if q.user_answer else '<em>[No answer entered]</em>' | safe }}
+                                    </div>
+                                </div>
+
+                                <div class="qa-response-box expected-answer">
+                                    <div class="qa-box-header expected">
+                                        <span>Expected Model Answer:</span>
+                                    </div>
+                                    <div class="qa-box-content">
+                                        {{ q.correct_answer }}
+                                    </div>
+
+                                    {% if q.acceptable_answers %}
+                                        <div style="margin-top: 10px;">
+                                            <span style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Acceptable Key Concepts:</span>
+                                            <div class="acceptable-tags-wrap">
+                                                {% for phrase in q.acceptable_answers %}
+                                                    <span class="acceptable-tag">{{ phrase }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Feedback banner -->
+                                <div class="qa-feedback-banner {{ q.qa_eval.status }}">
+                                    <span><strong>Evaluation Feedback:</strong> {{ q.qa_eval.feedback }}</span>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- MCQ Options Display with Right/Wrong Indicators -->
+                            <div class="eval-options-grid">
+                                {% for letter in ["A", "B", "C", "D"] %}
+                                    {% set is_user_pick = (q.user_choice == letter) %}
+                                    {% set is_correct_ans = (q.correct_answer == letter) %}
+
+                                    <div class="eval-option-tile 
+                                        {% if is_user_pick and is_correct_ans %}user-correct
+                                        {% elif is_user_pick and not is_correct_ans %}user-wrong
+                                        {% elif is_correct_ans and not is_user_pick %}correct-highlight
+                                        {% endif %}">
+                                        
+                                        <span class="option-letter-badge">{{ letter }}</span>
+                                        <span class="option-text-content">{{ q.options[letter] }}</span>
+
+                                        {% if is_user_pick and is_correct_ans %}
+                                            <span class="option-tag correct">Your Choice &bull; Correct</span>
+                                        {% elif is_user_pick and not is_correct_ans %}
+                                            <span class="option-tag wrong">Your Choice &bull; Wrong</span>
+                                        {% elif is_correct_ans and not is_user_pick %}
+                                            <span class="option-tag correct">Correct Answer</span>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- Explanation -->
+                        <div class="explanation-box">
+                            <div class="explanation-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                Explanation & Context:
+                            </div>
+                            <p class="explanation-text">{{ q.explanation }}</p>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+    <!-- ============================================================== -->
+    <!-- SCREEN 2: ACTIVE TEST TAKING SCREEN (TASKS 3, 4 & 5)           -->
+    <!-- ============================================================== -->
+    {% elif test_data %}
+        <section class="test-taking-section">
+            <div class="test-header-bar">
+                <div class="test-info-group">
+                    <span class="test-info-title">Active Assessment</span>
+                    <span class="pill-badge topic" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ test_data.topic }}
+                    </span>
+                    <span class="pill-badge {{ test_data.difficulty|lower }}">{{ test_data.difficulty }}</span>
+                    <span class="pill-badge" style="background: rgba(139,92,246,0.15); color: #c084fc; border: 1px solid rgba(139,92,246,0.3);">
+                        {{ test_data.question_type|upper }}
+                    </span>
+                    <span class="pill-badge" style="background: rgba(255,255,255,0.06); color: #cbd5e1; border: 1px solid var(--border-subtle);">
+                        {{ test_data.questions|length }} Questions
+                    </span>
+                </div>
+
+                <div class="test-progress-counter" id="progress-indicator">
+                    Answered: <span id="answered-count">0</span> / {{ test_data.questions|length }}
+                </div>
+            </div>
+
+            <form method="POST" id="test-form" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="submit_test">
+                <input type="hidden" name="questions_payload" value='{{ test_data | tojson }}'>
+
+                <div class="test-questions">
+                    {% for q in test_data.questions %}
+                        {% set q_idx = loop.index0 %}
+                        {% set is_qa = (q.type == 'qa') %}
+
+                        <article class="test-q-card" data-qindex="{{ q_idx }}" data-qtype="{{ q.type }}">
+                            <div class="q-header">
+                                <span class="q-number-pill">Q{{ loop.index }}</span>
+                                <div>
+                                    <span class="pill-badge" style="font-size: 11px; padding: 2px 8px; margin-bottom: 6px; display: inline-block; {% if is_qa %}background: rgba(139,92,246,0.15); color: #c084fc; border: 1px solid rgba(139,92,246,0.3);{% else %}background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3);{% endif %}">
+                                        {{ 'Q&A Short Answer' if is_qa else 'MCQ' }}
+                                    </span>
+                                    <h3 class="q-prompt">{{ q.question }}</h3>
+                                </div>
+                            </div>
+
+                            {% if is_qa %}
+                                <!-- Q&A Free Text Response Input with OCR Option (Task 5) -->
+                                <div class="qa-input-container">
+                                    <div class="qa-ocr-toolbar">
+                                        <span style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Your Written Answer:</span>
+                                        <label class="qa-ocr-btn" title="Upload image of handwritten or printed answer to extract text via OCR">
+                                            <input type="file" 
+                                                   name="q_img_{{ q_idx }}" 
+                                                   class="qa-ocr-input" 
+                                                   data-target="q_{{ q_idx }}_text" 
+                                                   accept="image/*" 
+                                                   style="display: none;">
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                            <span>Upload Photo of Answer (OCR)</span>
+                                        </label>
+                                    </div>
+
+                                    <div class="qa-ocr-status" id="ocr_status_{{ q_idx }}" style="display: none; font-size: 12px; margin-bottom: 6px;"></div>
+
+                                    <textarea name="q_{{ q_idx }}" 
+                                              id="q_{{ q_idx }}_text" 
+                                              class="qa-textarea" 
+                                              placeholder="Type your explanation, or upload a photo of your written answer using the button above..." 
+                                              rows="3"></textarea>
+                                    
+                                    <div class="qa-hint">
+                                        <span>Concise conceptual explanation or uploaded OCR text.</span>
+                                        <span class="char-count">0 characters</span>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <!-- MCQ Selectable Radio Options Grid -->
+                                <div class="options-selector-grid">
+                                    {% for letter in ["A", "B", "C", "D"] %}
+                                        <label class="option-radio-label" for="q_{{ q_idx }}_{{ letter }}">
+                                            <input type="radio" 
+                                                   id="q_{{ q_idx }}_{{ letter }}" 
+                                                   name="q_{{ q_idx }}" 
+                                                   value="{{ letter }}">
+                                            <span class="option-letter-badge">{{ letter }}</span>
+                                            <span class="option-text-content">{{ q.options[letter] }}</span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </article>
+                    {% endfor %}
+                </div>
+
+                <!-- Sticky Bottom Submit Action Bar -->
+                <div class="submit-action-bar">
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Complete your responses above, then submit for automated assessment evaluation.
+                    </div>
+
+                    <div class="submit-btn-group">
+                        <button type="submit" name="action" value="new_test" class="btn-secondary">
+                            Cancel Test
+                        </button>
+                        <button type="submit" name="action" value="submit_test" class="btn-submit-test" id="btn-submit-test">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Submit Assessment for Evaluation
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+    <!-- ============================================================== -->
+    <!-- SCREEN 3: GENERATE TEST SCREEN (TASKS 2, 4 & 5)                -->
+    <!-- ============================================================== -->
+    {% else %}
+        <section class="glass-card">
+            <form method="POST" id="generate-form" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="generate">
+                <input type="hidden" name="topic" id="topic-input" value="{{ selected_topic }}">
+                <input type="hidden" name="difficulty" id="difficulty-input" value="{{ difficulty }}">
+                <input type="hidden" name="question_type" id="type-input" value="{{ question_type or 'mixed' }}">
+
+                <!-- 1. Topic Selection Chips -->
+                <div class="form-section">
+                    <div class="section-label">
+                        <span>1. Choose Topic or Source Material</span>
+                        <span class="label-hint">Click a subject or upload an image below</span>
+                    </div>
+                    
+                    <div class="topic-chips" id="topic-chips">
+                        {% for item in topics %}
+                            <div class="topic-chip {% if selected_topic == item %}active{% endif %}" 
+                                 data-topic="{{ item }}">
+                                {{ item }}
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="custom-topic-box" id="custom-topic-box" style="display: {% if selected_topic == 'Other' %}block{% else %}none{% endif %};">
+                        <input type="text" 
+                               name="custom_topic" 
+                               id="custom_topic" 
+                               class="input-styled" 
+                               value="{{ custom_topic }}" 
+                               placeholder="Enter your custom topic (e.g., Kubernetes, Rust, Machine Learning)...">
+                    </div>
+
+                    <!-- Task 5: Document Image Upload & OCR Extractor -->
+                    <div class="ocr-upload-container">
+                        <div class="ocr-upload-header">
+                            <div class="ocr-label-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                <span>Task 5: OCR Document Text Extraction</span>
+                            </div>
+                            <span class="ocr-status-text" id="gen-ocr-status">Upload notes or textbook photo to generate questions from image</span>
+                        </div>
+
+                        <div class="ocr-file-input-wrap">
+                            <label class="ocr-btn-upload">
+                                <input type="file" name="source_image" id="source-image-input" accept="image/*" style="display: none;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                Choose Image Document
+                            </label>
+                            <span id="gen-file-chosen" style="font-size: 13px; color: var(--text-secondary);">No image selected</span>
+                        </div>
+
+                        <div class="ocr-preview-box" id="gen-ocr-preview"></div>
+                    </div>
+                </div>
+
+                <!-- 2. Question Type Selector (TASK 4) -->
+                <div class="form-section">
+                    <div class="section-label">
+                        <span>2. Assessment Format (Task 4)</span>
+                        <span class="label-hint">Choose question style</span>
+                    </div>
+                    <div class="type-segmented" id="type-segments">
+                        <button type="button" 
+                                class="type-btn {% if question_type == 'mixed' or not question_type %}active{% endif %}" 
+                                data-type="mixed">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Mixed (MCQ + Q&A)
+                        </button>
+                        <button type="button" 
+                                class="type-btn {% if question_type == 'mcq' %}active{% endif %}" 
+                                data-type="mcq">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            MCQ Only
+                        </button>
+                        <button type="button" 
+                                class="type-btn {% if question_type == 'qa' %}active{% endif %}" 
+                                data-type="qa">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                            Q&A Short Answer Only
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Config Grid: Difficulty, Count, AI Engine -->
+                <div class="config-grid">
+                    <!-- Difficulty Segmented Control -->
+                    <div>
+                        <div class="section-label">
+                            <span>3. Difficulty</span>
+                        </div>
+                        <div class="segmented-control" id="difficulty-segments">
+                            <button type="button" 
+                                    class="segment-btn {% if difficulty == 'Easy' %}active{% endif %}" 
+                                    data-difficulty="Easy">
+                                <span class="diff-dot easy"></span> Easy
+                            </button>
+                            <button type="button" 
+                                    class="segment-btn {% if difficulty == 'Medium' %}active{% endif %}" 
+                                    data-difficulty="Medium">
+                                <span class="diff-dot medium"></span> Medium
+                            </button>
+                            <button type="button" 
+                                    class="segment-btn {% if difficulty == 'Hard' %}active{% endif %}" 
+                                    data-difficulty="Hard">
+                                <span class="diff-dot hard"></span> Hard
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Question Count Stepper -->
+                    <div>
+                        <div class="section-label">
+                            <span>4. Questions</span>
+                            <span class="label-hint">1 - 30</span>
+                        </div>
+                        <div class="stepper-control">
+                            <button type="button" class="stepper-btn" id="btn-minus" aria-label="Decrease count">−</button>
+                            <input type="number" 
+                                   name="count" 
+                                   id="count-input" 
+                                   class="input-styled stepper-input" 
+                                   min="1" 
+                                   max="30" 
+                                   value="{{ count }}" 
+                                   required>
+                            <button type="button" class="stepper-btn" id="btn-plus" aria-label="Increase count">+</button>
+                        </div>
+                        <div class="count-presets">
+                            <span class="preset-chip" data-count="3">3 Qs</span>
+                            <span class="preset-chip" data-count="5">5 Qs</span>
+                            <span class="preset-chip" data-count="10">10 Qs</span>
+                            <span class="preset-chip" data-count="15">15 Qs</span>
+                        </div>
+                    </div>
+
+                    <!-- AI Provider Selection -->
+                    <div>
+                        <div class="section-label">
+                            <span>5. AI Engine</span>
+                        </div>
+                        <select name="provider" class="input-styled" id="provider-select">
+                            <option value="openai" {% if provider == 'openai' %}selected{% endif %}>
+                                OpenAI (gpt-4o-mini)
+                            </option>
+                            <option value="gemini" {% if provider == 'gemini' %}selected{% endif %}>
+                                Google Gemini
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn-primary" id="generate-btn">
+                    <span class="spinner"></span>
+                    <span class="btn-text">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align: middle; margin-right: 6px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        Generate Assessment Questions
+                    </span>
+                </button>
+            </form>
+        </section>
+    {% endif %}
+</main>
+
+<script>
+    // 1. Topic Chips Sync
+    const topicChips = document.querySelectorAll(".topic-chip");
+    const topicInput = document.getElementById("topic-input");
+    const customBox = document.getElementById("custom-topic-box");
+    const customInput = document.getElementById("custom_topic");
+
+    if (topicChips.length) {
+        topicChips.forEach(chip => {
+            chip.addEventListener("click", () => {
+                topicChips.forEach(c => c.classList.remove("active"));
+                chip.classList.add("active");
+                
+                const selectedTopic = chip.getAttribute("data-topic");
+                topicInput.value = selectedTopic;
+
+                if (selectedTopic === "Other") {
+                    customBox.style.display = "block";
+                    customInput.focus();
+                } else {
+                    customBox.style.display = "none";
+                }
+            });
+        });
+    }
+
+    // 2. Assessment Format Type Sync (Task 4)
+    const typeBtns = document.querySelectorAll(".type-btn");
+    const typeInput = document.getElementById("type-input");
+
+    if (typeBtns.length) {
+        typeBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                typeBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                if (typeInput) typeInput.value = btn.getAttribute("data-type");
+            });
+        });
+    }
+
+    // 3. Difficulty Segmented Buttons Sync
+    const segmentBtns = document.querySelectorAll(".segment-btn");
+    const diffInput = document.getElementById("difficulty-input");
+
+    if (segmentBtns.length) {
+        segmentBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                segmentBtns.forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                diffInput.value = btn.getAttribute("data-difficulty");
+            });
+        });
+    }
+
+    // 4. Question Count Stepper & Presets
+    const countInput = document.getElementById("count-input");
+    const btnMinus = document.getElementById("btn-minus");
+    const btnPlus = document.getElementById("btn-plus");
+    const presetChips = document.querySelectorAll(".preset-chip");
+
+    if (countInput && btnMinus && btnPlus) {
+        btnMinus.addEventListener("click", () => {
+            let val = parseInt(countInput.value) || 1;
+            if (val > 1) countInput.value = val - 1;
+            syncPresets();
+        });
+
+        btnPlus.addEventListener("click", () => {
+            let val = parseInt(countInput.value) || 1;
+            if (val < 30) countInput.value = val + 1;
+            syncPresets();
+        });
+
+        presetChips.forEach(chip => {
+            chip.addEventListener("click", () => {
+                countInput.value = chip.getAttribute("data-count");
+                syncPresets();
+            });
+        });
+
+        function syncPresets() {
+            const current = countInput.value;
+            presetChips.forEach(chip => {
+                chip.classList.toggle("active", chip.getAttribute("data-count") === current);
+            });
+        }
+        syncPresets();
+    }
+
+    // 5. Generate Button Loading State
+    const genForm = document.getElementById("generate-form");
+    const genBtn = document.getElementById("generate-btn");
+    if (genForm && genBtn) {
+        genForm.addEventListener("submit", () => {
+            genBtn.classList.add("loading");
+            const btnText = genBtn.querySelector(".btn-text");
+            if (btnText) btnText.innerHTML = "Generating Assessment Questions...";
+        });
+    }
+
+    // 6. Interactive Active Test Progress Tracking (MCQ + Q&A)
+    const cards = document.querySelectorAll(".test-q-card");
+    const answeredCountEl = document.getElementById("answered-count");
+
+    if (cards.length) {
+        function updateProgress() {
+            let answered = 0;
+            cards.forEach(card => {
+                const qType = card.getAttribute("data-qtype");
+                if (qType === "qa") {
+                    const txt = card.querySelector(".qa-textarea");
+                    if (txt && txt.value.trim().length > 0) {
+                        answered++;
+                    }
+                } else {
+                    const checked = card.querySelector("input[type='radio']:checked");
+                    if (checked) {
+                        answered++;
+                    }
+                }
+            });
+            if (answeredCountEl) {
+                answeredCountEl.innerText = answered;
+            }
+        }
+
+        // MCQ radio clicks
+        const radioLabels = document.querySelectorAll(".option-radio-label");
+        radioLabels.forEach(label => {
+            label.addEventListener("click", () => {
+                const radio = label.querySelector("input[type='radio']");
+                if (radio) {
+                    radio.checked = true;
+                    const card = label.closest(".test-q-card");
+                    card.querySelectorAll(".option-radio-label").forEach(l => l.classList.remove("selected"));
+                    label.classList.add("selected");
+                    updateProgress();
+                }
+            });
+        });
+
+        // Q&A textarea typing
+        const textareas = document.querySelectorAll(".qa-textarea");
+        textareas.forEach(txt => {
+            txt.addEventListener("input", () => {
+                const counter = txt.closest(".qa-input-container").querySelector(".char-count");
+                if (counter) counter.innerText = `${txt.value.length} characters`;
+                updateProgress();
+            });
+        });
+
+        updateProgress();
+    }
+
+    // ==============================================================
+    // 7. TASK 5: CLIENT-SIDE OCR TEXT EXTRACTION
+    // ==============================================================
+
+    // A. Generator Screen Document OCR
+    const sourceImageInput = document.getElementById("source-image-input");
+    const genFileChosen = document.getElementById("gen-file-chosen");
+    const genOcrStatus = document.getElementById("gen-ocr-status");
+    const genOcrPreview = document.getElementById("gen-ocr-preview");
+
+    if (sourceImageInput) {
+        sourceImageInput.addEventListener("change", async () => {
+            if (!sourceImageInput.files || !sourceImageInput.files[0]) return;
+            const file = sourceImageInput.files[0];
+            genFileChosen.innerText = file.name;
+            genOcrStatus.className = "ocr-status-text loading";
+            genOcrStatus.innerText = "Extracting text with OCR...";
+
+            const formData = new FormData();
+            formData.append("image", file);
+
+            try {
+                const response = await fetch("/api/ocr", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success && data.text) {
+                    genOcrStatus.className = "ocr-status-text success";
+                    genOcrStatus.innerText = `Extracted ${data.words} words via ${data.method}`;
+                    genOcrPreview.style.display = "block";
+                    genOcrPreview.innerText = `Extracted Content Preview:\n${data.text.substring(0, 300)}...`;
+                } else {
+                    genOcrStatus.className = "ocr-status-text";
+                    genOcrStatus.innerText = data.error || "Could not read text from image.";
+                }
+            } catch (err) {
+                genOcrStatus.className = "ocr-status-text";
+                genOcrStatus.innerText = "OCR extraction error. Server will process on submission.";
+            }
+        });
+    }
+
+    // B. In-Test Q&A Image OCR for User Answers
+    const qaOcrInputs = document.querySelectorAll(".qa-ocr-input");
+    qaOcrInputs.forEach(input => {
+        input.addEventListener("change", async () => {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const targetId = input.getAttribute("data-target");
+            const targetTextarea = document.getElementById(targetId);
+            const statusBox = input.closest(".qa-input-container").querySelector(".qa-ocr-status");
+
+            if (statusBox) {
+                statusBox.style.display = "block";
+                statusBox.innerHTML = `<span style="color: #a5b4fc;">Extracting text from <strong>${file.name}</strong> via AI OCR...</span>`;
+            }
+
+            const formData = new FormData();
+            formData.append("image", file);
+
+            try {
+                const response = await fetch("/api/ocr", {
+                    method: "POST",
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success && data.text) {
+                    if (targetTextarea) {
+                        targetTextarea.value = data.text;
+                        const counter = targetTextarea.closest(".qa-input-container").querySelector(".char-count");
+                        if (counter) counter.innerText = `${data.text.length} characters`;
+                    }
+                    if (statusBox) {
+                        statusBox.innerHTML = `<span class="ocr-badge-tag">Extracted via ${data.method} (${data.words} words)</span>`;
+                    }
+                    if (typeof updateProgress === "function") {
+                        updateProgress();
+                    }
+                } else {
+                    if (statusBox) {
+                        statusBox.innerHTML = `<span style="color: #fb7185;">${data.error || "Failed to extract text"}</span>`;
+                    }
+                }
+            } catch (err) {
+                if (statusBox) {
+                    statusBox.innerHTML = `<span style="color: #fb7185;">OCR service error. Image will be processed on submit.</span>`;
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

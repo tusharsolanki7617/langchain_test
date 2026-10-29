@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCQ Generator</title>
+    <style>
+      :root {
+        --bg: #1c1d22;
+        --panel: #2d2f35;
+        --panel-2: #3b3d45;
+        --text: #f1f5f9;
+        --muted: #cbd5e1;
+        --accent: #3b82f6;
+        --border: #4b5563;
+        --answer: #22c55e;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      .app {
+        width: min(980px, 92vw);
+        padding: 24px;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.02);
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) minmax(100px, 1fr) auto;
+        gap: 12px;
+        margin-bottom: 24px;
+        align-items: center;
+      }
+
+      .topic-select-wrap {
+        position: relative;
+      }
+
+      .topic-select-wrap::after {
+        content: '▾';
+        position: absolute;
+        right: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 18px;
+        pointer-events: none;
+      }
+
+      input, select, button {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        padding: 14px 16px;
+        font-size: 16px;
+      }
+
+      button {
+        background: var(--accent);
+        border: none;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .results-panel {
+        display: none;
+        margin-top: 24px;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 18px;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 0 18px 45px rgba(3, 7, 18, 0.22);
+      }
+
+      .results-panel.visible {
+        display: block;
+      }
+
+      .assessment-header {
+        background: linear-gradient(90deg, #5d5ae8 0%, #8a4ae6 100%);
+        padding: 26px 28px 18px;
+        border-radius: 18px 18px 0 0;
+      }
+
+      .results-title {
+        font-size: clamp(2rem, 2.7vw, 3rem);
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        margin: 0;
+        color: rgba(255,255,255,0.96);
+      }
+
+      .results-topic {
+        margin-top: 16px;
+        color: rgba(255,255,255,0.8);
+        font-size: 1.1rem;
+        font-weight: 500;
+        text-transform: capitalize;
+      }
+
+      .results-body {
+        background: rgba(17, 22, 30, 0.82);
+        padding: 22px 28px 26px;
+        border: 1px solid rgba(255,255,255,0.09);
+        border-top: none;
+        border-radius: 0 0 18px 18px;
+      }
+
+      .score-box {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        margin: 6px 0 18px;
+      }
+
+      #showResultsBtn {
+        min-height: 60px;
+        border-radius: 14px;
+        font-size: clamp(1.1rem, 2vw, 1.6rem);
+        box-shadow: 0 10px 22px rgba(59, 130, 246, 0.28);
+      }
+
+      .score-value {
+        font-size: clamp(2.6rem, 5vw, 4.5rem);
+        font-weight: 800;
+        line-height: 1.1;
+        color: rgba(255,255,255,0.96);
+      }
+
+      .score-status {
+        margin-top: 6px;
+        font-size: 1.1rem;
+        color: #aaf0c4;
+        opacity: 0.9;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.12);
+        overflow: hidden;
+        margin: 18px 0 24px;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #5fa9ff 0%, #5ad4ff 100%);
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(120px, 1fr));
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .metric-card {
+        min-height: 120px;
+        padding: 8px 10px;
+        color: rgba(255,255,255,0.86);
+      }
+
+      .metric-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 1rem;
+        color: rgba(255,255,255,0.8);
+        margin-bottom: 10px;
+      }
+
+      .metric-icon {
+        width: 14px;
+        height: 14px;
+        display: inline-block;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
+
+      .metric-icon.right {
+        background: rgba(47, 201, 88, 0.2);
+        color: #5fe38c;
+      }
+
+      .metric-icon.wrong {
+        background: rgba(238, 84, 84, 0.2);
+        color: #ff7a7a;
+      }
+
+      .metric-icon.skip {
+        background: rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.8);
+      }
+
+      .metric-value {
+        font-size: clamp(1.8rem, 2.7vw, 3rem);
+        font-weight: 700;
+        margin: 0;
+        color: rgba(255,255,255,0.96);
+      }
+
+      .metric-sub {
+        margin-top: 26px;
+        color: rgba(255,255,255,0.7);
+        font-size: 0.95rem;
+      }
+
+      .results-list {
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+      }
+
+      .quiz {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .question-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 20px 22px;
+      }
+
+      .question-number {
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: var(--muted);
+      }
+
+      .question-text {
+        font-size: 1.1rem;
+        margin-bottom: 18px;
+        line-height: 1.5;
+      }
+
+      .options {
+        display: grid;
+        gap: 10px;
+      }
+
+      .option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+      }
+
+      .option:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+
+      .option.selected {
+        border-color: var(--accent);
+        background: rgba(59, 130, 246, 0.18);
+      }
+
+      .option.correct {
+        border-color: var(--answer);
+        background: rgba(34, 197, 94, 0.12);
+      }
+
+      .option.incorrect {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.12);
+      }
+
+      .option-label {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #1f2937;
+        font-weight: 700;
+      }
+
+      .answer-box {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.5);
+        color: #d1fae5;
+        display: none;
+      }
+
+      .answer-box.is-wrong {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #fecaca;
+      }
+
+      .answer-box.visible {
+        display: block;
+      }
+
+      .empty {
+        color: var(--muted);
+        text-align: center;
+        padding: 40px 20px;
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+      }
+
+      @media (max-width: 700px) {
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .controls > * {
+          width: 100%;
+        }
+
+        .topic-select-wrap::after {
+          right: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <form id="mcqForm" class="controls">
+        <div class="topic-select-wrap">
+          <select id="topic" aria-label="Select topic">
+            <option value="Python" selected>Python</option>
+            <option value="JavaScript">JavaScript</option>
+            <option value="Java">Java</option>
+            <option value="C">C</option>
+            <option value="C++">C++</option>
+            <option value="AI">AI</option>
+            <option value="SQL">SQL</option>
+            <option value="Data Structures">Data Structures</option>
+          </select>
+        </div>
+        <select id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <select id="count">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+        <button type="submit">Generate</button>
+      </form>
+
+      <div id="quiz" class="quiz"></div>
+
+      <div id="resultsPanel" class="results-panel">
+        <div id="resultsSummary" class="results-list"></div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <button id="showResultsBtn" type="button">Show All Results</button>
+      </div>
+    </div>
+
+    <script>
+      const difficultyVariations = {
+        easy: {
+          intro: "basic ideas and common knowledge",
+        },
+        medium: {
+          intro: "practical concepts and applied understanding",
+        },
+        hard: {
+          intro: "deeper reasoning and advanced application",
+        }
+      };
+
+      function buildLocalQuestions(topic, difficulty, count) {
+        const t = (topic || 'the topic').trim() || 'the topic';
+        const base = [
+          {
+            question: `What is the main purpose of learning ${t}?`,
+            options: [
+              `To understand the core ideas behind ${t}`,
+              `To ignore ${t} completely`,
+              `To avoid using ${t} in practice`,
+              `To replace all real-world problem solving with memorization`,
+            ],
+            correct: `To understand the core ideas behind ${t}`,
+            explanation: `The main goal of learning ${t} is to understand its core concepts and apply them correctly.`
+          },
+          {
+            question: `Which statement best describes ${t}?`,
+            options: [
+              `It is a practical subject that helps solve real problems`,
+              `It has no useful applications`,
+              `It is only important for memorization`,
+              `It can be ignored in everyday work`,
+            ],
+            correct: `It is a practical subject that helps solve real problems`,
+            explanation: `${t} is usually valuable because it supports real problem-solving and practical skill building.`
+          },
+          {
+            question: `What is the best way to improve your understanding of ${t}?`,
+            options: [
+              'Study the concepts and practice regularly',
+              'Avoid examples and exercises',
+              'Memorize only one answer',
+              'Ignore feedback and results',
+            ],
+            correct: 'Study the concepts and practice regularly',
+            explanation: 'Consistent study and repetition help you understand concepts deeply and retain them longer.'
+          },
+          {
+            question: `Which option is the most accurate about ${t}?`,
+            options: [
+              'It requires understanding, practice, and application',
+              'It is only based on guessing',
+              'It does not improve with repetition',
+              'It can be mastered without learning the basics',
+            ],
+            correct: 'It requires understanding, practice, and application',
+            explanation: 'Good learning depends on mastering the basics, practicing regularly, and applying concepts in real situations.'
+          },
+          {
+            question: `Which approach best supports learning ${t} deeply?`,
+            options: [
+              'Build a strong foundation and then apply it to examples',
+              'Skip the basics and rely on guesswork',
+              'Only read once without practice',
+              'Ignore mistakes during learning',
+            ],
+            correct: 'Build a strong foundation and then apply it to examples',
+            explanation: 'A solid foundation and hands-on practice are key to understanding and applying any technical topic well.'
+          }
+        ];
+
+        const questions = [];
+        for (let i = 0; i < count; i++) {
+          const item = base[i % base.length];
+          questions.push({
+            question: item.question,
+            options: [...item.options],
+            correct_answer: item.correct,
+            explanation: item.explanation,
+          });
+        }
+        return questions;
+      }
+
+      function renderQuestions(questions) {
+        const quiz = document.getElementById('quiz');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const resultsSummary = document.getElementById('resultsSummary');
+
+        resultsPanel.classList.remove('visible');
+        resultsSummary.innerHTML = '';
+
+        if (!questions.length) {
+          quiz.innerHTML = '<div class="empty">Enter a topic and generate your questions.</div>';
+          return;
+        }
+
+        quiz.innerHTML = questions.map((q, i) => `
+          <div class="question-card" data-correct="${q.correct_answer}">
+            <div class="question-number">Question ${i + 1}</div>
+            <div class="question-text">${q.question}</div>
+            <div class="options">
+              ${q.options.map((option, idx) => `
+                <button type="button" class="option" data-answer="${option}">
+                  <span class="option-label">${String.fromCharCode(65 + idx)}</span>
+                  <span>${option}</span>
+                </button>
+              `).join('')}
+            </div>
+            <div class="answer-box">
+              <div class="result">Choose an answer.</div>
+              <div><strong>Selected Answer:</strong> <span class="selected-answer">Not answered yet</span></div>
+              <div><strong>Correct Answer:</strong> ${q.correct_answer}</div>
+              <div><strong>Explanation:</strong> ${q.explanation}</div>
+            </div>
+          </div>
+        `).join('');
+
+        quiz.querySelectorAll('.option').forEach((button) => {
+          button.addEventListener('click', () => {
+            const card = button.closest('.question-card');
+            const selectedAnswer = button.dataset.answer;
+            const correctAnswer = card.dataset.correct;
+            const answerBox = card.querySelector('.answer-box');
+            const selectedText = card.querySelector('.selected-answer');
+            const resultText = card.querySelector('.result');
+
+            card.dataset.selectedAnswer = selectedAnswer;
+            card.querySelectorAll('.option').forEach((option) => {
+              option.classList.remove('selected', 'correct', 'incorrect');
+              if (option.dataset.answer === selectedAnswer) {
+                option.classList.add('selected');
+              }
+              if (option.dataset.answer === correctAnswer) {
+                option.classList.add('correct');
+              }
+              if (selectedAnswer !== correctAnswer && option.dataset.answer === selectedAnswer) {
+                option.classList.add('incorrect');
+              }
+            });
+
+            const isCorrect = selectedAnswer === correctAnswer;
+            selectedText.textContent = selectedAnswer;
+            resultText.textContent = isCorrect ? '✅ Correct answer!' : '❌ Wrong answer!';
+            answerBox.classList.toggle('is-wrong', !isCorrect);
+            answerBox.classList.add('visible');
+          });
+        });
+      }
+
+      function showAllResults() {
+        const cards = document.querySelectorAll('.question-card');
+        if (!cards.length) {
+          return;
+        }
+
+        const topic = document.getElementById('topic').value;
+        const difficulty = document.getElementById('difficulty').value;
+        const difficultyLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+
+        let correctCount = 0;
+        let wrongCount = 0;
+        let skippedCount = 0;
+
+        cards.forEach((card) => {
+          const selectedAnswer = card.dataset.selectedAnswer || 'Not answered';
+          const correctAnswer = card.dataset.correct;
+          const isCorrect = selectedAnswer === correctAnswer;
+
+          if (selectedAnswer === 'Not answered') {
+            skippedCount += 1;
+          } else if (isCorrect) {
+            correctCount += 1;
+          } else {
+            wrongCount += 1;
+          }
+        });
+
+        const total = cards.length;
+        const percent = total ? ((correctCount / total) * 100).toFixed(1) : 0;
+        const statusText = percent >= 70 ? 'Excellent!' : percent >= 50 ? 'Good effort!' : 'Needs improvement';
+
+        const resultsPanel = document.getElementById('resultsPanel');
+        const resultsSummary = document.getElementById('resultsSummary');
+        resultsSummary.innerHTML = `
+          <div class="assessment-header">
+            <h2 class="results-title">Assessment Results</h2>
+            <div class="results-topic">${topic} • ${difficultyLabel}</div>
+          </div>
+          <div class="results-body">
+            <div class="score-box">
+              <div class="score-value">${percent}%</div>
+              <div class="score-status">${statusText}</div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${percent}%"></div>
+            </div>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-label">Score</div>
+                <p class="metric-value">${correctCount}/${total}</p>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label"><span class="metric-icon right">✓</span> Right</div>
+                <p class="metric-value">${correctCount}</p>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label"><span class="metric-icon wrong">✕</span> Wrong</div>
+                <p class="metric-value">${wrongCount}</p>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label"><span class="metric-icon skip">⏭</span> Skipped</div>
+                <p class="metric-value">${skippedCount}</p>
+              </div>
+            </div>
+          </div>
+        `;
+        resultsPanel.classList.add('visible');
+      }
+
+      document.getElementById('mcqForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        const topic = document.getElementById('topic').value;
+        const difficulty = document.getElementById('difficulty').value;
+        const count = Number(document.getElementById('count').value);
+
+        const questions = buildLocalQuestions(topic, difficulty, count);
+        renderQuestions(questions);
+      });
+
+      document.getElementById('showResultsBtn').addEventListener('click', showAllResults);
+
+      renderQuestions(buildLocalQuestions('Python', 'medium', 3));
+    </script>
+  </body>
+</html>

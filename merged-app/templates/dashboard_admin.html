@@ -1,0 +1,555 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — EduX{% endblock %}
+{% block body_class %}dashboard-page role-admin-page{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+  <!-- Sidebar -->
+  <aside class="sidebar sidebar-admin" role="complementary" aria-label="Admin Navigation">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      EduX
+    </div>
+
+    <div class="sidebar-profile">
+      <div class="avatar avatar-admin">{{ user.first_name[0].upper() }}</div>
+      <div class="profile-info">
+        <span class="profile-name">{{ user.first_name }} {{ user.last_name }}</span>
+        <span class="profile-role role-badge-sm">⚙️ Admin</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard_admin') }}" class="nav-link {% if not status_filter and not role_filter %}active{% endif %}" id="nav-overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Overview
+        {% if pending_count > 0 %}
+        <span class="nav-badge">{{ pending_count }}</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('dashboard_admin', status='pending') }}" class="nav-link {% if status_filter == 'pending' %}active{% endif %}" id="nav-pending">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Pending
+        {% if pending_count > 0 %}
+        <span class="nav-badge nav-badge-warn">{{ pending_count }}</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('dashboard_admin') }}#all-users" class="nav-link" id="nav-users">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        All Users
+      </a>
+      <a href="{{ url_for('dashboard_admin') }}#audit" class="nav-link" id="nav-logs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        Audit Logs
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="extra-info-chip">🔐 Administrator</div>
+      <a href="{{ url_for('logout') }}" class="sidebar-logout" id="sidebar-logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="dashboard-main">
+    <header class="dash-header">
+      <div class="dash-welcome">
+        <h1>Admin Console ⚙️</h1>
+        <p>Manage users, approve accounts, and monitor platform activity.</p>
+      </div>
+    </header>
+
+    <!-- Platform Metrics -->
+    <section class="metrics-grid" aria-label="Platform statistics">
+      <div class="metric-card metric-amber" tabindex="0">
+        <div class="metric-icon">👥</div>
+        <div class="metric-value">{{ (counts.student or 0) + (counts.teacher or 0) }}</div>
+        <div class="metric-label">Total Users</div>
+        <div class="metric-trend trend-neutral">→ Registered</div>
+      </div>
+      <div class="metric-card metric-cyan" tabindex="0">
+        <div class="metric-icon">🎓</div>
+        <div class="metric-value">{{ counts.student or 0 }}</div>
+        <div class="metric-label">Students</div>
+        <div class="metric-trend trend-neutral">→ Enrolled</div>
+      </div>
+      <div class="metric-card metric-violet" tabindex="0">
+        <div class="metric-icon">📚</div>
+        <div class="metric-value">{{ counts.teacher or 0 }}</div>
+        <div class="metric-label">Teachers</div>
+        <div class="metric-trend trend-neutral">→ Registered</div>
+      </div>
+      <div class="metric-card {% if pending_count > 0 %}metric-amber metric-alert{% else %}metric-green{% endif %}" tabindex="0">
+        <div class="metric-icon">{{ '⏳' if pending_count > 0 else '✅' }}</div>
+        <div class="metric-value">{{ pending_count }}</div>
+        <div class="metric-label">Pending Approvals</div>
+        <div class="metric-trend {% if pending_count > 0 %}trend-warn{% else %}trend-up{% endif %}">
+          {{ '↑ Needs review' if pending_count > 0 else '→ All clear' }}
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Approval Queue ──────────────────────────────────── -->
+    {% set pending_users = users | selectattr('status', 'equalto', 'pending') | list if not status_filter else users %}
+    {% set show_queue = (status_filter == 'pending') or (not status_filter and pending_users) %}
+    {% if show_queue %}
+    <section class="section-block approval-queue-section" id="approval-queue">
+      <div class="section-header">
+        <div class="section-title-group">
+          <h2>Approval Queue</h2>
+          <p class="section-subtitle">New teachers and students can't sign in until approved.</p>
+        </div>
+        {% set q_users = pending_users if not status_filter else users %}
+        {% if q_users %}
+        <button class="btn-approve-all" id="approve-all-btn"
+                onclick="approveAll({{ q_users | map(attribute='id') | list | tojson }})">
+          ✓ Approve all ({{ q_users | length }})
+        </button>
+        {% endif %}
+      </div>
+
+      <div class="approval-list" id="approval-list">
+        {% set q_users = pending_users if not status_filter else users %}
+        {% for u in q_users %}
+        <div class="approval-card" id="apcard-{{ u.id }}">
+          <div class="ap-avatar ap-{{ u.role }}">{{ u.first_name[0].upper() }}{{ u.last_name[0].upper() }}</div>
+          <div class="ap-info">
+            <div class="ap-name-row">
+              <span class="ap-name">{{ u.first_name }} {{ u.last_name }}</span>
+              <span class="role-pill role-pill-{{ u.role }}">
+                {{ '🎓' if u.role == 'student' else '📚' }} {{ u.role | capitalize }}
+              </span>
+            </div>
+            <div class="ap-meta">
+              {{ u.email }}
+              {% if u.role == 'student' %}
+                · {{ u.institute or '' }}
+                {% if u.roll_number %} · {{ u.roll_number }}{% endif %}
+                {% if u.class_year %} · {{ u.class_year }}{% endif %}
+              {% elif u.role == 'teacher' %}
+                {% if u.department %} · {{ u.department }}{% endif %}
+              {% endif %}
+              · signed up {{ u.created_at.strftime('%d %b') if u.created_at and u.created_at.__class__.__name__ != 'str' else (u.created_at or '')[:10] }}
+            </div>
+          </div>
+          <div class="ap-actions">
+            <button class="btn-approve" onclick="approveUser({{ u.id }})" id="approve-{{ u.id }}"
+                    aria-label="Approve {{ u.first_name }}">
+              ✓ Approve
+            </button>
+            <button class="btn-reject" onclick="openRejectModal({{ u.id }}, '{{ u.first_name }} {{ u.last_name }}')"
+                    id="reject-{{ u.id }}" aria-label="Reject {{ u.first_name }}">
+              ✕ Reject
+            </button>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-queue">
+          <span class="empty-icon">🎉</span>
+          <p>No pending approvals — you're all caught up!</p>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ─── Recent Signups ──────────────────────────────────── -->
+    {% if not status_filter %}
+    <section class="section-block two-col-section">
+      <div class="two-col-left">
+        <div class="section-header">
+          <h2>Recent Sign‑ups</h2>
+        </div>
+        <div class="signup-feed">
+          {% for s in recent_signups %}
+          <div class="signup-item">
+            <div class="mini-avatar mini-{{ s.role }}">{{ s.first_name[0].upper() }}</div>
+            <div class="signup-item-info">
+              <span class="signup-name">{{ s.first_name }} {{ s.last_name }}</span>
+              <span class="signup-meta">{{ s.role | capitalize }}
+                · {{ s.created_at.strftime('%d %b') if s.created_at and s.created_at.__class__.__name__ != 'str' else (s.created_at or '')[:10] }}
+              </span>
+            </div>
+            <span class="status-pill-sm status-{{ s.status }}">{{ s.status | capitalize }}</span>
+          </div>
+          {% else %}
+          <p class="no-data">No sign‑ups yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="two-col-right">
+        <div class="section-header">
+          <h2>Activity</h2>
+        </div>
+        <div class="activity-list">
+          <div class="activity-item">
+            <span class="activity-icon">📝</span>
+            <span class="activity-label">Total Signups</span>
+            <span class="activity-val">{{ (counts.student or 0) + (counts.teacher or 0) }}</span>
+          </div>
+          <div class="activity-item">
+            <span class="activity-icon">✅</span>
+            <span class="activity-label">Approved</span>
+            <span class="activity-val">{{ counts.approved or 0 }}</span>
+          </div>
+          <div class="activity-item">
+            <span class="activity-icon">⏳</span>
+            <span class="activity-label">Pending</span>
+            <span class="activity-val pending-highlight">{{ counts.pending or 0 }}</span>
+          </div>
+          <div class="activity-item">
+            <span class="activity-icon">❌</span>
+            <span class="activity-label">Rejected</span>
+            <span class="activity-val reject-highlight">{{ counts.rejected or 0 }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ─── All Users Table ─────────────────────────────────── -->
+    <section class="section-block" id="all-users">
+      <div class="section-header">
+        <h2>Users &amp; Approvals</h2>
+        <span class="section-badge">{{ users | length }} shown</span>
+      </div>
+      <p class="section-subtitle-standalone">Approve, reject or deactivate teacher and student accounts.</p>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <div class="filter-tabs">
+          <a href="{{ url_for('dashboard_admin') }}" class="ftab {% if not status_filter %}active{% endif %}">All</a>
+          <a href="{{ url_for('dashboard_admin', status='pending') }}" class="ftab ftab-pending {% if status_filter == 'pending' %}active{% endif %}">
+            Pending {% if pending_count %}<span class="ftab-count">{{ pending_count }}</span>{% endif %}
+          </a>
+          <a href="{{ url_for('dashboard_admin', status='approved') }}" class="ftab ftab-approved {% if status_filter == 'approved' %}active{% endif %}">Approved</a>
+          <a href="{{ url_for('dashboard_admin', status='rejected') }}" class="ftab ftab-rejected {% if status_filter == 'rejected' %}active{% endif %}">Rejected</a>
+        </div>
+        <div class="filter-right">
+          <form method="GET" action="{{ url_for('dashboard_admin') }}" id="search-form">
+            <input type="hidden" name="status" value="{{ status_filter }}" />
+            <div class="input-wrapper search-wrapper">
+              <span class="input-icon">🔍</span>
+              <input type="text" name="search" id="search-input" class="form-input"
+                     placeholder="Search name, email, roll no…"
+                     value="{{ search }}" autocomplete="off" />
+            </div>
+            <select name="role_filter" class="table-filter" onchange="this.form.submit()" aria-label="Filter by role">
+              <option value="" {% if not role_filter %}selected{% endif %}>All Roles</option>
+              <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Students</option>
+              <option value="teacher" {% if role_filter == 'teacher' %}selected{% endif %}>Teachers</option>
+            </select>
+          </form>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table" aria-label="Registered users">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Details</th>
+              <th>Joined</th>
+              <th>Status</th>
+              <th>Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            {% for u in users %}
+            <tr class="user-row" id="row-{{ u.id }}">
+              <td>
+                <div class="user-cell">
+                  <div class="mini-avatar mini-{{ u.role }}">{{ u.first_name[0].upper() }}</div>
+                  <div class="user-cell-info">
+                    <span class="user-fullname">{{ u.first_name }} {{ u.last_name }}</span>
+                    <span class="user-email">{{ u.email }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="role-pill role-pill-{{ u.role }}">
+                  {{ '🎓' if u.role == 'student' else '📚' }} {{ u.role | capitalize }}
+                </span>
+              </td>
+              <td class="td-details">
+                {% if u.role == 'student' %}
+                  {{ u.institute or '—' }}
+                  {% if u.roll_number %} · {{ u.roll_number }}{% endif %}
+                  {% if u.class_year %} · {{ u.class_year }}{% endif %}
+                {% elif u.role == 'teacher' %}
+                  {{ u.department or '—' }}
+                {% endif %}
+              </td>
+              <td class="td-date">
+                {{ u.created_at.strftime('%d %b %Y') if u.created_at and u.created_at.__class__.__name__ != 'str' else (u.created_at or '—')[:10] }}
+              </td>
+              <td>
+                <span class="status-pill status-{{ u.status }}" id="status-{{ u.id }}">
+                  {% if u.status == 'pending' %}⏳ {% elif u.status == 'approved' %}✅ {% else %}❌ {% endif %}
+                  {{ u.status | capitalize }}
+                  {% if u.status == 'rejected' and u.reject_reason %}
+                  <span class="reject-reason" title="{{ u.reject_reason }}">ⓘ</span>
+                  {% endif %}
+                </span>
+              </td>
+              <td>
+                <label class="toggle-switch" aria-label="Toggle active status for {{ u.first_name }}">
+                  <input type="checkbox" class="toggle-input" id="active-{{ u.id }}"
+                         {{ 'checked' if u.active else '' }}
+                         onchange="toggleActive({{ u.id }}, this.checked)" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </td>
+              <td>
+                <div class="action-btns">
+                  {% if u.status == 'pending' %}
+                  <button class="btn-sm btn-approve" onclick="approveUser({{ u.id }})" id="tbl-approve-{{ u.id }}"
+                          aria-label="Approve {{ u.first_name }}">✓ Approve</button>
+                  <button class="btn-sm btn-reject" onclick="openRejectModal({{ u.id }}, '{{ u.first_name }} {{ u.last_name }}')"
+                          aria-label="Reject {{ u.first_name }}">✕ Reject</button>
+                  {% elif u.status == 'rejected' %}
+                  <button class="btn-sm btn-approve" onclick="approveUser({{ u.id }})" id="tbl-reapprove-{{ u.id }}"
+                          aria-label="Re-approve {{ u.first_name }}">✓ Approve</button>
+                  {% else %}
+                  <span class="approved-check">✓ Approved</span>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="empty-row">No users found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ─── Audit Logs ──────────────────────────────────────── -->
+    <section class="section-block" id="audit">
+      <div class="section-header">
+        <h2>Audit Logs</h2>
+        <span class="section-badge">Last {{ recent_logs | length }} events</span>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table" aria-label="Audit log entries">
+          <thead>
+            <tr><th>Time</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr>
+          </thead>
+          <tbody>
+            {% for log in recent_logs %}
+            <tr>
+              <td class="td-date">{{ log.created_at.strftime('%d %b, %H:%M') if log.created_at and log.created_at.__class__.__name__ != 'str' else (log.created_at or '—')[:16] }}</td>
+              <td class="td-email">{{ log.user_email or '—' }}</td>
+              <td><span class="role-pill role-pill-{{ log.role or 'admin' }}">{{ (log.role or '?') | capitalize }}</span></td>
+              <td><span class="action-tag action-{{ log.action | lower | replace('_','-') }}">{{ log.action }}</span></td>
+              <td class="td-details">{{ log.details or '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="empty-row">No audit logs yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" id="reject-modal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-card glass">
+    <h3 id="modal-title">Reject Account</h3>
+    <p id="modal-sub">Rejecting <strong id="modal-username"></strong></p>
+    <div class="form-group">
+      <label for="reject-reason-input" class="form-label">Reason (optional)</label>
+      <div class="input-wrapper">
+        <span class="input-icon">💬</span>
+        <input type="text" id="reject-reason-input" class="form-input"
+               placeholder="e.g. I don't know this person" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeRejectModal()" type="button">Cancel</button>
+      <button class="btn-modal-reject" onclick="confirmReject()" id="confirm-reject-btn" type="button">✕ Confirm Reject</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rejectTargetId = null;
+
+function approveUser(userId) {
+  const btn = document.getElementById('approve-' + userId) || document.getElementById('tbl-approve-' + userId) || document.getElementById('tbl-reapprove-' + userId);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+  fetch('/api/admin/approve/' + userId, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        updateUserStatus(userId, 'approved');
+        showToast('User approved successfully!', 'success');
+        // Remove from queue card
+        const apcard = document.getElementById('apcard-' + userId);
+        if (apcard) apcard.style.animation = 'fadeOut 0.3s ease forwards';
+        setTimeout(() => { if (apcard) apcard.remove(); updateQueueBadge(); }, 350);
+      } else {
+        showToast(data.error || 'Error approving user', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Approve'; }
+      }
+    })
+    .catch(() => { showToast('Network error', 'error'); if (btn) { btn.disabled = false; } });
+}
+
+function openRejectModal(userId, name) {
+  rejectTargetId = userId;
+  document.getElementById('modal-username').textContent = name;
+  document.getElementById('reject-reason-input').value = '';
+  document.getElementById('reject-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('reject-reason-input').focus(), 100);
+}
+
+function closeRejectModal() {
+  document.getElementById('reject-modal').style.display = 'none';
+  rejectTargetId = null;
+}
+
+function confirmReject() {
+  if (!rejectTargetId) return;
+  const reason = document.getElementById('reject-reason-input').value.trim();
+  const btn = document.getElementById('confirm-reject-btn');
+  btn.disabled = true; btn.textContent = '…';
+
+  fetch('/api/admin/reject/' + rejectTargetId, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: reason })
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        updateUserStatus(rejectTargetId, 'rejected');
+        showToast('User rejected.', 'warning');
+        const apcard = document.getElementById('apcard-' + rejectTargetId);
+        if (apcard) apcard.style.animation = 'fadeOut 0.3s ease forwards';
+        setTimeout(() => { if (apcard) apcard.remove(); updateQueueBadge(); }, 350);
+        closeRejectModal();
+      } else {
+        showToast(data.error || 'Error rejecting user', 'error');
+        btn.disabled = false; btn.textContent = '✕ Confirm Reject';
+      }
+    })
+    .catch(() => { showToast('Network error', 'error'); btn.disabled = false; });
+}
+
+function updateUserStatus(userId, newStatus) {
+  const el = document.getElementById('status-' + userId);
+  if (el) {
+    const icons = { pending: '⏳ ', approved: '✅ ', rejected: '❌ ' };
+    el.textContent = (icons[newStatus] || '') + newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+    el.className = 'status-pill status-' + newStatus;
+  }
+  // Update action buttons in table row
+  const approveBtn = document.getElementById('tbl-approve-' + userId) || document.getElementById('tbl-reapprove-' + userId);
+  const rejectBtn  = document.querySelector(`#row-${userId} .btn-reject`);
+  if (newStatus === 'approved') {
+    if (approveBtn) approveBtn.closest('.action-btns').innerHTML = '<span class="approved-check">✓ Approved</span>';
+  } else if (newStatus === 'rejected') {
+    if (approveBtn) approveBtn.textContent = '✓ Approve';
+    approveBtn && (approveBtn.id = 'tbl-reapprove-' + userId);
+    if (rejectBtn) rejectBtn.style.display = 'none';
+  }
+}
+
+function approveAll(ids) {
+  if (!ids || !ids.length) return;
+  const btn = document.getElementById('approve-all-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Approving…'; }
+  let done = 0;
+  ids.forEach(id => {
+    fetch('/api/admin/approve/' + id, { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          updateUserStatus(id, 'approved');
+          const apcard = document.getElementById('apcard-' + id);
+          if (apcard) apcard.style.animation = 'fadeOut 0.3s ease forwards';
+          setTimeout(() => { if (apcard) apcard.remove(); }, 350);
+        }
+        done++;
+        if (done === ids.length) {
+          showToast('All pending users approved!', 'success');
+          updateQueueBadge();
+        }
+      });
+  });
+}
+
+function toggleActive(userId, isActive) {
+  fetch('/api/admin/toggle-active/' + userId, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) {
+        showToast(data.error || 'Toggle failed', 'error');
+        // Revert checkbox
+        const cb = document.getElementById('active-' + userId);
+        if (cb) cb.checked = !isActive;
+      } else {
+        showToast('User ' + data.label, 'info');
+      }
+    })
+    .catch(() => showToast('Network error', 'error'));
+}
+
+function updateQueueBadge() {
+  const list = document.getElementById('approval-list');
+  if (!list) return;
+  const remaining = list.querySelectorAll('.approval-card').length;
+  document.querySelectorAll('.nav-badge, .nav-badge-warn').forEach(b => {
+    if (remaining === 0) b.style.display = 'none';
+    else b.textContent = remaining;
+  });
+}
+
+// Close modal on overlay click
+document.getElementById('reject-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeRejectModal();
+});
+
+// Auto-submit search on Enter
+document.getElementById('search-input') && document.getElementById('search-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('search-form').submit();
+});
+</script>
+<style>
+@keyframes fadeOut { to { opacity: 0; transform: translateX(40px); height: 0; padding: 0; margin: 0; } }
+</style>
+{% endblock %}

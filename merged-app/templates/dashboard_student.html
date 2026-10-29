@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard — EduX{% endblock %}
+{% block body_class %}dashboard-page role-student-page{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+  <!-- Sidebar -->
+  <aside class="sidebar sidebar-student" role="complementary" aria-label="Student Navigation">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+      EduX
+    </div>
+
+    <div class="sidebar-profile">
+      <div class="avatar avatar-student">{{ user.first_name[0].upper() }}</div>
+      <div class="profile-info">
+        <span class="profile-name">{{ user.first_name }} {{ user.last_name }}</span>
+        <span class="profile-role role-badge-sm">🎓 Student</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#overview" class="nav-link active" id="nav-overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Overview
+      </a>
+      <a href="#quizzes" class="nav-link" id="nav-quizzes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        Quizzes
+      </a>
+      <a href="#scores" class="nav-link" id="nav-scores">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        My Scores
+      </a>
+      <a href="{{ url_for('tests') }}" class="nav-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+        </svg>
+        AI Tests
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="extra-info-chip">📖 {{ user.class_year or user.institute or 'No class assigned' }}</div>
+      <a href="{{ url_for('logout') }}" class="sidebar-logout" id="sidebar-logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="dashboard-main">
+    <!-- Header -->
+    <header class="dash-header">
+      <div class="dash-welcome">
+        <h1>Hello, {{ user.first_name }}! 👋</h1>
+        <p>Here's your learning summary for today.</p>
+      </div>
+      <div class="dash-header-right">
+        <div class="date-chip">📅 {{ now if now else 'Today' }}</div>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <section class="metrics-grid" id="overview" aria-label="Student statistics">
+      <div class="metric-card metric-cyan" tabindex="0">
+        <div class="metric-icon">🏆</div>
+        <div class="metric-value">87%</div>
+        <div class="metric-label">Avg Score</div>
+        <div class="metric-trend trend-up">↑ +5% this week</div>
+      </div>
+      <div class="metric-card metric-purple" tabindex="0">
+        <div class="metric-icon">📝</div>
+        <div class="metric-value">12</div>
+        <div class="metric-label">Quizzes Taken</div>
+        <div class="metric-trend trend-up">↑ 3 this week</div>
+      </div>
+      <div class="metric-card metric-green" tabindex="0">
+        <div class="metric-icon">⏱️</div>
+        <div class="metric-value">4.2h</div>
+        <div class="metric-label">Study Time</div>
+        <div class="metric-trend trend-neutral">→ This week</div>
+      </div>
+      <div class="metric-card metric-orange" tabindex="0">
+        <div class="metric-icon">🔥</div>
+        <div class="metric-value">7</div>
+        <div class="metric-label">Day Streak</div>
+        <div class="metric-trend trend-up">↑ Keep going!</div>
+      </div>
+    </section>
+
+    <!-- Quick Actions -->
+    <section class="section-block" id="quizzes">
+      <div class="section-header">
+        <h2>Quick Actions</h2>
+      </div>
+      <div class="quick-actions">
+        <a href="http://127.0.0.1:5001" target="_blank" class="action-card action-primary" id="start-quiz-btn">
+          <div class="action-icon">🚀</div>
+          <div class="action-label">Start a Quiz</div>
+          <div class="action-desc">Launch MCQ generator</div>
+        </a>
+        <div class="action-card" id="practice-btn">
+          <div class="action-icon">📖</div>
+          <div class="action-label">Practice Mode</div>
+          <div class="action-desc">Untimed practice</div>
+        </div>
+        <div class="action-card" id="review-btn">
+          <div class="action-icon">🔄</div>
+          <div class="action-label">Review Mistakes</div>
+          <div class="action-desc">Learn from errors</div>
+        </div>
+        <div class="action-card" id="leaderboard-btn">
+          <div class="action-icon">📊</div>
+          <div class="action-label">Leaderboard</div>
+          <div class="action-desc">See your ranking</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Scores -->
+    <section class="section-block" id="scores">
+      <div class="section-header">
+        <h2>Recent Scores</h2>
+        <span class="section-badge">Last 5 quizzes</span>
+      </div>
+      <div class="score-list">
+        <div class="score-item">
+          <div class="score-subject">
+            <span class="subject-icon">🧠</span>
+            <span>Machine Learning Basics</span>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar"><div class="score-fill" style="width:92%"></div></div>
+          </div>
+          <div class="score-pct score-high">92%</div>
+        </div>
+        <div class="score-item">
+          <div class="score-subject">
+            <span class="subject-icon">🐍</span>
+            <span>Python Programming</span>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar"><div class="score-fill" style="width:78%"></div></div>
+          </div>
+          <div class="score-pct score-mid">78%</div>
+        </div>
+        <div class="score-item">
+          <div class="score-subject">
+            <span class="subject-icon">📐</span>
+            <span>Linear Algebra</span>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar"><div class="score-fill" style="width:65%"></div></div>
+          </div>
+          <div class="score-pct score-low">65%</div>
+        </div>
+        <div class="score-item">
+          <div class="score-subject">
+            <span class="subject-icon">🌐</span>
+            <span>Web Development</span>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar"><div class="score-fill" style="width:88%"></div></div>
+          </div>
+          <div class="score-pct score-high">88%</div>
+        </div>
+        <div class="score-item">
+          <div class="score-subject">
+            <span class="subject-icon">🔢</span>
+            <span>Data Structures</span>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar"><div class="score-fill" style="width:95%"></div></div>
+          </div>
+          <div class="score-pct score-high">95%</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

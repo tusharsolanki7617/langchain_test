@@ -1,0 +1,9 @@
+
+Flask
+python-dotenv
+mysql-connector-python
+langchain-core
+langchain-openai
+langchain-google-genai
+pillow
+pytesseract
