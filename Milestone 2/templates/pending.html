@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Pending — ExamAI</title>
+
+  <!-- Google Fonts (Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      /* Subtle light grid background matching screenshot */
+      background-image:
+        linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px);
+      background-size: 32px 32px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #0f172a;
+    }
+
+    .pending-container {
+      width: 100%;
+      max-width: 440px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 24px;
+      padding: 44px 36px;
+      box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.07), 0 8px 16px -6px rgba(0, 0, 0, 0.04);
+      text-align: center;
+      animation: cardPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes cardPop {
+      from { opacity: 0; transform: translateY(16px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Top Logo */
+    .pending-brand-header {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .pending-brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #7c3aed, #6366f1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .pending-brand-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .pending-brand-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+
+    /* Big Center Purple Hourglass Icon */
+    .pending-hero-icon {
+      width: 68px;
+      height: 68px;
+      background: linear-gradient(135deg, #818cf8, #6366f1);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      margin: 0 auto 28px;
+      box-shadow: 0 10px 25px -4px rgba(99, 102, 241, 0.35);
+      animation: gentleFloat 4s ease-in-out infinite;
+    }
+
+    @keyframes gentleFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .pending-hero-icon svg {
+      width: 34px;
+      height: 34px;
+    }
+
+    /* Typography */
+    .pending-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.025em;
+      margin-bottom: 14px;
+    }
+
+    .pending-message {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #64748b;
+      margin-bottom: 26px;
+      padding: 0 6px;
+    }
+
+    .pending-message strong {
+      color: #0f172a;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    /* Callout Box */
+    .pending-callout-box {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      text-align: left;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: #475569;
+      margin-bottom: 28px;
+    }
+
+    .pending-callout-icon {
+      color: #6366f1;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .pending-callout-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Action Button */
+    .btn-goto-signin {
+      display: block;
+      width: 100%;
+      background: #4f46e5;
+      color: #ffffff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 14px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .btn-goto-signin:hover {
+      background: #4338ca;
+      box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-goto-signin:active {
+      transform: translateY(0);
+    }
+
+    /* Live checking subtle indicator */
+    .live-pulse-meta {
+      margin-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: #94a3b8;
+    }
+
+    .live-pulse-dot {
+      width: 7px;
+      height: 7px;
+      background: #6366f1;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #6366f1;
+      animation: pulseAnim 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulseAnim {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="pending-container">
+    <!-- Brand Logo -->
+    <div class="pending-brand-header">
+      <div class="pending-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="pending-brand-name">ExamAI</span>
+    </div>
+
+    <!-- Center Purple Squircle with Hourglass -->
+    <div class="pending-hero-icon" id="hero-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 22h14"/>
+        <path d="M5 2h14"/>
+        <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/>
+        <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>
+      </svg>
+    </div>
+
+    <!-- Heading -->
+    <h1 class="pending-title" id="page-title">You're on the list!</h1>
+
+    <!-- Subtitle -->
+    <p class="pending-message" id="page-sub">
+      Your {{ role or 'student' }} account for<br/>
+      <strong id="user-email">{{ email }}</strong> was created and is<br/>
+      waiting for an administrator to approve it.
+    </p>
+
+    <!-- Info Callout Box -->
+    <div class="pending-callout-box" id="info-callout">
+      <span class="pending-callout-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+      </span>
+      <span>Once approved, you can sign in with the email and password you just chose.</span>
+    </div>
+
+    <!-- Primary Action Button -->
+    <a href="{{ url_for('login', role=role, email=email) }}" class="btn-goto-signin" id="goto-btn">
+      Go to sign in
+    </a>
+
+    <!-- Live Polling Status Indicator -->
+    <div class="live-pulse-meta" id="live-indicator">
+      <span class="live-pulse-dot"></span>
+      <span id="live-text">Checking verification status...</span>
+    </div>
+  </div>
+
+  <script>
+    const email = "{{ email }}";
+    const role  = "{{ role }}";
+    let pollTimer = null;
+
+    function checkApproval() {
+      if (!email) return;
+      fetch('/api/check-status?email=' + encodeURIComponent(email))
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'approved') {
+            clearInterval(pollTimer);
+            document.getElementById('page-title').textContent = "You're approved!";
+            document.getElementById('page-sub').innerHTML = `Your <strong>${role}</strong> account has been approved by an administrator! Redirecting to sign in…`;
+            document.getElementById('hero-icon').innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>`;
+            document.getElementById('hero-icon').style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            document.getElementById('live-text').textContent = "Approval confirmed!";
+            setTimeout(() => {
+              window.location.href = "{{ url_for('login') }}?role=" + encodeURIComponent(role) + "&email=" + encodeURIComponent(email);
+            }, 1800);
+          } else if (data.status === 'rejected') {
+            clearInterval(pollTimer);
+            document.getElementById('page-title').textContent = "Registration declined";
+            document.getElementById('page-sub').textContent = "Your registration was declined by the administrator.";
+            document.getElementById('live-text').textContent = "Status updated";
+          }
+        })
+        .catch(() => {});
+    }
+
+    if (email) {
+      pollTimer = setInterval(checkApproval, 3500);
+    }
+  </script>
+</body>
+</html>

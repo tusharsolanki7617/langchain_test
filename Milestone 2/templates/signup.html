@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+{% block title %}Create Account — EduX Platform{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+
+{% block content %}
+<div class="auth-container role-theme-{{ selected_role }}" id="auth-container">
+  <!-- Left Showcase Panel -->
+  <div class="auth-panel auth-left">
+    <div class="auth-left-content">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        <span>EduX</span>
+      </div>
+
+      <!-- Role-Adaptive Dynamic Hero Content -->
+      <div class="hero-role-block" id="hero-role-student" style="display: {% if selected_role == 'student' %}block{% else %}none{% endif %};">
+        <div class="role-pill-indicator role-pill-student">
+          <span class="indicator-dot"></span> 🎓 STUDENT REGISTRATION
+        </div>
+        <h1 class="auth-tagline">Begin your<br/><span class="gradient-text gradient-student">learning mastery</span></h1>
+        <p class="auth-sub">Register your student profile to access personalized quizzes, smart question explanations, and real-time score tracking.</p>
+
+        <div class="signup-info-cards">
+          <div class="info-card info-student">
+            <div class="info-icon">🎯</div>
+            <div>
+              <strong>Adaptive Question Practice</strong>
+              <p>Practice MCQs tailored to your curriculum and syllabus</p>
+            </div>
+          </div>
+          <div class="info-card info-student">
+            <div class="info-icon">📈</div>
+            <div>
+              <strong>Automated Instant Feedback</strong>
+              <p>Get instant grading, detailed rationale, and score breakdown</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="approval-notice">
+          <span class="approval-icon">⏳</span>
+          <div>
+            <strong>Institutional Verification</strong>
+            <p>Student accounts are reviewed by campus administrators to ensure class enrollment.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-role-block" id="hero-role-teacher" style="display: {% if selected_role == 'teacher' %}block{% else %}none{% endif %};">
+        <div class="role-pill-indicator role-pill-teacher">
+          <span class="indicator-dot"></span> 📚 EDUCATOR REGISTRATION
+        </div>
+        <h1 class="auth-tagline">Empower your<br/><span class="gradient-text gradient-teacher">academic curriculum</span></h1>
+        <p class="auth-sub">Join as an educator to instantly generate AI assessments, scan exam notes via OCR, and monitor student comprehension.</p>
+
+        <div class="signup-info-cards">
+          <div class="info-card info-teacher">
+            <div class="info-icon">🪄</div>
+            <div>
+              <strong>Instant AI Test Generation</strong>
+              <p>Turn syllabus concepts into balanced MCQs in seconds</p>
+            </div>
+          </div>
+          <div class="info-card info-teacher">
+            <div class="info-icon">📊</div>
+            <div>
+              <strong>Institutional Analytics</strong>
+              <p>Track class submissions, pass percentages, and difficulty curves</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="approval-notice">
+          <span class="approval-icon">⏳</span>
+          <div>
+            <strong>Faculty Verification</strong>
+            <p>Faculty registrations require admin approval to grant test creation permissions.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-role-block" id="hero-role-admin" style="display: {% if selected_role == 'admin' %}block{% else %}none{% endif %};">
+        <div class="role-pill-indicator role-pill-admin">
+          <span class="indicator-dot"></span> ⚙️ ADMINISTRATOR SETUP
+        </div>
+        <h1 class="auth-tagline">Initialize your<br/><span class="gradient-text gradient-admin">governance role</span></h1>
+        <p class="auth-sub">Create an institutional administrator account to approve users, govern platform security, and audit platform activities.</p>
+
+        <div class="signup-info-cards">
+          <div class="info-card info-admin">
+            <div class="info-icon">🔑</div>
+            <div>
+              <strong>Security Authorization Key</strong>
+              <p>Requires authorized invitation code (Default: <code>ADMIN2026</code>)</p>
+            </div>
+          </div>
+          <div class="info-card info-admin">
+            <div class="info-icon">⚡</div>
+            <div>
+              <strong>Immediate Access</strong>
+              <p>Admin accounts bypass the approval queue upon code verification</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="approval-notice">
+          <span class="approval-icon">🛡️</span>
+          <div>
+            <strong>Secure Onboarding</strong>
+            <p>Administrative credentials carry full oversight across all student and teacher accounts.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="already-member" style="margin-top: 24px;">
+        <p>Already registered? <a href="{{ url_for('login', role=selected_role) }}" id="go-to-login">Sign In instead →</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Signup Form -->
+  <div class="auth-panel auth-right signup-right">
+    <div class="auth-card glass signup-card">
+      <div class="auth-card-header">
+        <div class="auth-header-top">
+          <span class="role-badge role-badge-current" id="header-role-badge">
+            {% if selected_role == 'student' %}🎓 Student Registration
+            {% elif selected_role == 'teacher' %}📚 Teacher Registration
+            {% else %}⚙️ Admin Registration{% endif %}
+          </span>
+        </div>
+        <h2>Create your account</h2>
+        <p>Select your role and complete the details below</p>
+      </div>
+
+      <!-- Role Tabs -->
+      <div class="role-tabs" role="tablist" aria-label="Select your role">
+        <button class="role-tab {% if selected_role == 'student' %}active{% endif %}"
+                id="tab-student" role="tab"
+                aria-selected="{{ 'true' if selected_role == 'student' else 'false' }}"
+                onclick="switchRole('student')" type="button">🎓 Student</button>
+        <button class="role-tab {% if selected_role == 'teacher' %}active{% endif %}"
+                id="tab-teacher" role="tab"
+                aria-selected="{{ 'true' if selected_role == 'teacher' else 'false' }}"
+                onclick="switchRole('teacher')" type="button">📚 Teacher</button>
+        <button class="role-tab {% if selected_role == 'admin' %}active{% endif %}"
+                id="tab-admin" role="tab"
+                aria-selected="{{ 'true' if selected_role == 'admin' else 'false' }}"
+                onclick="switchRole('admin')" type="button">⚙️ Admin</button>
+      </div>
+
+      <form method="POST" action="{{ url_for('signup') }}" id="signup-form" novalidate>
+        <input type="hidden" name="role" id="role-input" value="{{ selected_role }}" />
+
+        <!-- Name Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="first_name" class="form-label">First Name</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" id="first_name" name="first_name" class="form-input"
+                     placeholder="e.g. Alex"
+                     value="{{ first_name if first_name else '' }}"
+                     autocomplete="given-name" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="last_name" class="form-label">Last Name</label>
+            <div class="input-wrapper">
+              <span class="input-icon">👤</span>
+              <input type="text" id="last_name" name="last_name" class="form-input"
+                     placeholder="e.g. Rivera"
+                     value="{{ last_name if last_name else '' }}"
+                     autocomplete="family-name" required />
+            </div>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label for="email" class="form-label">
+            Institutional Email Address
+            <span class="email-status" id="email-status"></span>
+          </label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </span>
+            <input type="email" id="email" name="email" class="form-input"
+                   placeholder="e.g. alex@university.edu"
+                   value="{{ email if email else '' }}"
+                   autocomplete="email"
+                   oninput="checkEmailAvailability(this.value)" required />
+          </div>
+        </div>
+
+        <!-- ── STUDENT FIELDS ── -->
+        <div id="student-fields" style="display: {% if selected_role == 'student' %}block{% else %}none{% endif %};">
+          <div class="form-group">
+            <label for="institute" class="form-label">College / University Name</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🏫</span>
+              <input type="text" id="institute" name="institute" class="form-input"
+                     placeholder="e.g. Stanford University / Tech Institute"
+                     value="{{ institute if institute else '' }}" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="roll_number" class="form-label">Student ID / Roll No</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🔢</span>
+                <input type="text" id="roll_number" name="roll_number" class="form-input"
+                       placeholder="e.g. CS-2026-4401"
+                       value="{{ roll_number if roll_number else '' }}" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="class_year" class="form-label">Academic Year / Branch</label>
+              <div class="input-wrapper">
+                <span class="input-icon">📅</span>
+                <input type="text" id="class_year" name="class_year" class="form-input"
+                       placeholder="e.g. 3rd Year · B.Tech CS"
+                       value="{{ class_year if class_year else '' }}" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TEACHER FIELDS ── -->
+        <div id="teacher-fields" style="display: {% if selected_role == 'teacher' %}block{% else %}none{% endif %};">
+          <div class="form-group">
+            <label for="teacher_institute" class="form-label">College / University Name</label>
+            <div class="input-wrapper">
+              <span class="input-icon">🏫</span>
+              <input type="text" id="teacher_institute" name="teacher_institute" class="form-input"
+                     placeholder="e.g. Faculty of Engineering &amp; Sciences"
+                     value="{{ institute if institute else '' }}" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="department" class="form-label">Academic Department</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🏛️</span>
+                <input type="text" id="department" name="department" class="form-input"
+                       placeholder="e.g. Computer Science &amp; AI"
+                       value="{{ department if department else '' }}" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="designation" class="form-label">Designation / Specialization</label>
+              <div class="input-wrapper">
+                <span class="input-icon">📖</span>
+                <input type="text" id="designation" name="designation" class="form-input"
+                       placeholder="e.g. Associate Professor" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ADMIN FIELDS ── -->
+        <div id="admin-fields" style="display: {% if selected_role == 'admin' %}block{% else %}none{% endif %};">
+          <div class="form-group">
+            <label for="admin_code" class="form-label">
+              Admin Security Code <span class="label-badge">Required</span>
+            </label>
+            <div class="input-wrapper">
+              <span class="input-icon">🔑</span>
+              <input type="password" id="admin_code" name="admin_code" class="form-input"
+                     placeholder="Enter authorization invite code" />
+            </div>
+            <p class="field-hint">Development security code: <code>ADMIN2026</code></p>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+            </span>
+            <input type="password" id="password" name="password" class="form-input"
+                   placeholder="Min 6 characters"
+                   autocomplete="new-password"
+                   oninput="updatePasswordStrength(this.value)" required />
+            <button type="button" class="toggle-pass" onclick="togglePassword('password',this)"
+                    id="toggle-pass-btn" aria-label="Toggle password visibility">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <!-- Dynamic Password Strength Meter -->
+          <div class="password-strength-box" id="pass-strength-wrapper">
+            <div class="strength-bar-track">
+              <div class="strength-bar-segment" id="seg-1"></div>
+              <div class="strength-bar-segment" id="seg-2"></div>
+              <div class="strength-bar-segment" id="seg-3"></div>
+              <div class="strength-bar-segment" id="seg-4"></div>
+            </div>
+            <div class="strength-meta">
+              <span class="strength-label" id="strength-label">Enter password</span>
+              <div class="strength-checklist">
+                <span id="chk-len" class="chk-item">6+ chars</span>
+                <span id="chk-num" class="chk-item">Number</span>
+                <span id="chk-sym" class="chk-item">Special/Upper</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label for="confirm_password" class="form-label">
+            Confirm Password
+            <span id="match-status" class="match-status"></span>
+          </label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </span>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-input"
+                   placeholder="Re-enter your password"
+                   autocomplete="new-password"
+                   oninput="checkPasswordMatch()" required />
+          </div>
+          <p class="field-hint" id="match-hint" style="display:none;color:var(--error)">Passwords do not match</p>
+        </div>
+
+        <!-- Role-based Approval notice callout -->
+        <div class="form-role-callout" id="form-role-callout">
+          {% if selected_role == 'admin' %}
+          <div class="callout-content callout-admin">
+            <span class="callout-icon">⚡</span>
+            <span>Admin accounts with valid code are activated instantly.</span>
+          </div>
+          {% else %}
+          <div class="callout-content callout-pending">
+            <span class="callout-icon">⏳</span>
+            <span>{{ selected_role | capitalize }} accounts will be placed in the Admin Approval queue before first sign-in.</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Terms Agreement -->
+        <div class="form-extra-row">
+          <label class="remember-checkbox">
+            <input type="checkbox" name="terms" id="terms-agree" required checked />
+            <span class="custom-checkbox"></span>
+            <span class="remember-label">I agree to institutional platform terms &amp; policies</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-primary btn-full btn-role-themed" id="signup-submit-btn">
+          <span class="btn-spinner" id="signup-spinner" style="display:none"></span>
+          <span class="btn-text" id="signup-btn-text">Create {{ selected_role | capitalize }} Account</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Already a member? <a href="{{ url_for('login', role=selected_role) }}" id="back-to-login">Sign in instead</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const currentRole = "{{ selected_role }}";
+  initAuthPage(currentRole);
+</script>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends "student_base.html" %}
+{% block title %}Dashboard — ExamAI Student{% endblock %}
+
+{% block content %}
+<div class="s-page-header-row">
+  <div>
+    <div class="s-page-label">OVERVIEW</div>
+    <h1 class="s-page-title">Hello, {{ user.first_name or user.get('first_name','') }} 👋</h1>
+    <p class="s-page-sub">Here's what's happening across your tests and practice.</p>
+  </div>
+  <a href="{{ url_for('student_practice') }}" class="s-btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    Start practising
+  </a>
+</div>
+
+<!-- Metric cards -->
+<div class="s-metric-row">
+  <div class="s-metric-card">
+    <div class="s-metric-top">
+      <span class="s-metric-label">Assigned tests</span>
+      <div class="s-metric-icon" style="background:#ede9fe;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" width="20" height="20"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </div>
+    </div>
+    <div class="s-metric-value">{{ tests|length }}</div>
+    <div class="s-metric-sub">{{ tests|selectattr('status','equalto','published')|list|length }} open now</div>
+  </div>
+
+  <div class="s-metric-card">
+    <div class="s-metric-top">
+      <span class="s-metric-label">Practice sessions</span>
+      <div class="s-metric-icon" style="background:#dbeafe;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" width="20" height="20"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+    </div>
+    <div class="s-metric-value">{{ history|length }}</div>
+    <div class="s-metric-sub">in recent history</div>
+  </div>
+
+  <div class="s-metric-card">
+    <div class="s-metric-top">
+      <span class="s-metric-label">Best score</span>
+      <div class="s-metric-icon" style="background:#d1fae5;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" width="20" height="20"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>
+    {% set submitted = history|selectattr('submitted')|list %}
+    {% if submitted %}
+      {% set best = submitted|sort(attribute='score',reverse=true)|first %}
+      <div class="s-metric-value">{{ ((best.score / best.total_marks * 100) if best.total_marks else 0)|int }}%</div>
+      <div class="s-metric-sub">{{ best.topic or best.subject }}</div>
+    {% else %}
+      <div class="s-metric-value">—</div>
+      <div class="s-metric-sub">No attempts yet</div>
+    {% endif %}
+  </div>
+
+  <div class="s-metric-card">
+    <div class="s-metric-top">
+      <span class="s-metric-label">Correct answers</span>
+      <div class="s-metric-icon" style="background:#fef9c3;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+    </div>
+    {% set total_correct = history|map(attribute='correct_count')|select|sum %}
+    <div class="s-metric-value">{{ total_correct }}</div>
+    <div class="s-metric-sub">across all practice</div>
+  </div>
+</div>
+
+<div class="s-two-col-layout" style="margin-top:1.5rem;">
+  <!-- Assigned tests -->
+  <div class="s-main-col">
+    <div class="s-section-header">
+      <div class="s-section-title">Assigned tests</div>
+      <a href="{{ url_for('student_my_tests') }}" class="s-section-link">View all</a>
+    </div>
+
+    {% if tests %}
+      <div class="s-test-list">
+        {% for t in tests[:4] %}
+        <div class="s-test-row">
+          <div class="s-test-row-left">
+            <div class="s-test-avatar">{{ t.subject[0].upper() if t.subject else 'T' }}</div>
+            <div>
+              <div class="s-test-row-title">{{ t.title }}</div>
+              <div class="s-test-row-meta">{{ t.subject }} • {{ t.total_marks or 0 }} marks • {{ t.duration or 0 }} min</div>
+            </div>
+          </div>
+          <div class="s-test-row-right">
+            <span class="s-badge-status {% if t.status == 'published' %}open{% else %}closed{% endif %}">
+              {{ '● Open' if t.status == 'published' else '● Closed' }}
+            </span>
+            {% if t.status == 'published' %}
+            <a href="#" class="s-btn-sm-primary">Take test</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="s-empty-state" style="padding:2rem;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" width="40" height="40"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <div style="margin-top:.5rem;color:#6b7280;font-size:.875rem;">No tests assigned yet.</div>
+        <div style="color:#9ca3af;font-size:.8rem;">Your teacher will assign tests here.</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Recent practice -->
+  <div class="s-side-col">
+    <div class="s-section-header">
+      <div class="s-section-title">Recent practice</div>
+      <a href="{{ url_for('student_results') }}" class="s-section-link">View all</a>
+    </div>
+
+    {% if history %}
+      {% for h in history %}
+      <div class="s-history-card">
+        <div class="s-history-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div class="s-history-info">
+          <div class="s-history-title">{{ h.topic or h.subject }} practice</div>
+          <div class="s-history-meta">
+            <span class="s-diff-badge {{ h.difficulty or 'medium' }}">{{ (h.difficulty or 'medium')|capitalize }}</span>
+            {{ h.q_count or 0 }} questions
+            {% if h.submitted_at %}• {{ h.submitted_at|time_ago }}{% endif %}
+          </div>
+        </div>
+        <div class="s-history-score">
+          {% if h.submitted %}
+            {{ ((h.score / h.total_marks * 100) if h.total_marks else 0)|int }}%
+          {% else %}
+            <span style="color:#9ca3af;font-size:.75rem;">Not submitted</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="s-empty-state" style="padding:2rem;text-align:center;">
+        <div style="color:#9ca3af;font-size:.875rem;">No practice history yet.</div>
+        <a href="{{ url_for('student_practice') }}" class="s-btn-primary" style="margin-top:.75rem;display:inline-flex;">Start practising</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

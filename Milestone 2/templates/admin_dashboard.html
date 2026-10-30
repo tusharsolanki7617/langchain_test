@@ -1,0 +1,210 @@
+{% extends "admin_base.html" %}
+{% block title %}Platform Overview — ExamAI Admin Console{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+  <div class="admin-breadcrumb-tag">ADMIN CONSOLE</div>
+  <h1 class="admin-page-title">Platform overview</h1>
+  <p class="admin-page-subtitle">Review signups and keep track of activity across ExamAI.</p>
+</div>
+
+<!-- 4 Top Metric Cards -->
+<div class="metrics-row-4">
+  <!-- Card 1: Pending Approvals -->
+  <div class="exam-metric-card">
+    <div class="metric-top-row">
+      <span class="metric-heading">Pending approvals</span>
+      <div class="metric-icon-circle icon-circle-amber">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+    </div>
+    <div class="metric-big-num">{{ metrics.pending }}</div>
+    <div class="metric-meta-sub">Waiting for your review</div>
+  </div>
+
+  <!-- Card 2: Students -->
+  <div class="exam-metric-card">
+    <div class="metric-top-row">
+      <span class="metric-heading">Students</span>
+      <div class="metric-icon-circle icon-circle-purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+    </div>
+    <div class="metric-big-num">{{ metrics.students.total }}</div>
+    <div class="metric-meta-sub">{{ metrics.students.pending }} pending · {{ metrics.students.rejected }} rejected</div>
+  </div>
+
+  <!-- Card 3: Teachers -->
+  <div class="exam-metric-card">
+    <div class="metric-top-row">
+      <span class="metric-heading">Teachers</span>
+      <div class="metric-icon-circle icon-circle-cyan">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+    </div>
+    <div class="metric-big-num">{{ metrics.teachers.total }}</div>
+    <div class="metric-meta-sub">{{ metrics.teachers.pending }} pending · {{ metrics.teachers.rejected }} rejected</div>
+  </div>
+
+  <!-- Card 4: Tests Created -->
+  <div class="exam-metric-card">
+    <div class="metric-top-row">
+      <span class="metric-heading">Tests created</span>
+      <div class="metric-icon-circle icon-circle-green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </div>
+    </div>
+    <div class="metric-big-num">{{ metrics.tests.total }}</div>
+    <div class="metric-meta-sub">{{ metrics.tests.published }} published · {{ metrics.tests.practice }} practice sets</div>
+  </div>
+</div>
+
+<!-- Two-Column Section: Left (Approval Queue) & Right (Activity + Recent Signups) -->
+<div class="admin-two-cols">
+  <!-- Left: Approval Queue -->
+  <div class="exam-panel approval-queue-panel">
+    <div class="panel-header-with-action">
+      <div>
+        <h2 class="panel-title">Approval queue</h2>
+        <p class="panel-subtitle">New teachers and students can't sign in until approved.</p>
+      </div>
+      {% if approval_queue %}
+      <button type="button" class="exam-btn exam-btn-primary" id="approve-all-btn"
+              onclick="approveAll({{ approval_queue | map(attribute='id') | list | tojson }})">
+        ✓ Approve all ({{ approval_queue | length }})
+      </button>
+      {% endif %}
+    </div>
+
+    <div class="queue-list" id="queue-list">
+      {% for u in approval_queue %}
+      <div class="queue-item-card" id="queue-row-{{ u.id }}">
+        <div class="queue-item-left">
+          <div class="queue-avatar">
+            {{ u | initials }}
+          </div>
+          <div class="queue-item-info">
+            <div class="queue-name-row">
+              <span class="queue-name">{{ u.first_name }} {{ u.last_name }}</span>
+              <span class="role-badge role-badge-{{ u.role }}">
+                {{ u.role | capitalize }}
+              </span>
+            </div>
+            <div class="queue-meta-row">
+              <span>{{ u.email }}</span>
+              {% if u.institute %}<span>· {{ u.institute }}</span>{% endif %}
+              {% if u.roll_number %}<span>· {{ u.roll_number }}</span>{% endif %}
+              {% if u.department %}<span>· {{ u.department }}</span>{% endif %}
+              <span>· signed up {{ u.created_at | format_date }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="queue-item-actions">
+          <button type="button" class="exam-btn exam-btn-primary-sm" id="approve-{{ u.id }}"
+                  onclick="approveUser({{ u.id }})">
+            ✓ Approve
+          </button>
+          <button type="button" class="exam-btn exam-btn-outline-sm" id="reject-{{ u.id }}"
+                  onclick="openRejectModal({{ u.id }}, '{{ u.first_name }} {{ u.last_name }}')">
+            ✕ Reject
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <div class="queue-empty-state">
+        <span class="empty-icon">🎉</span>
+        <p>All caught up! No pending approvals.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right: Activity & Recent Signups -->
+  <div class="admin-side-stack">
+    <!-- Activity Card -->
+    <div class="exam-panel activity-panel">
+      <h2 class="panel-title">Activity</h2>
+      <div class="activity-list">
+        <div class="activity-row-item">
+          <div class="activity-icon-sq">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <span class="activity-name">Test attempts</span>
+          <span class="activity-stat-value">{{ metrics.activity.test_attempts }}</span>
+        </div>
+
+        <div class="activity-row-item">
+          <div class="activity-icon-sq">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
+          <span class="activity-name">AI practice sets generated</span>
+          <span class="activity-stat-value">{{ metrics.activity.practice_sets }}</span>
+        </div>
+
+        <div class="activity-row-item">
+          <div class="activity-icon-sq">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+          </div>
+          <span class="activity-name">Published tests</span>
+          <span class="activity-stat-value">{{ metrics.activity.published_tests }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Signups Card -->
+    <div class="exam-panel recent-signups-panel">
+      <div class="panel-header-with-action">
+        <h2 class="panel-title">Recent signups</h2>
+        <a href="{{ url_for('admin_users') }}" class="view-all-link">View all</a>
+      </div>
+
+      <div class="recent-signups-list">
+        {% for u in recent_signups %}
+        <div class="signup-row-item">
+          <div class="signup-avatar">
+            {{ u | initials }}
+          </div>
+          <div class="signup-info">
+            <div class="signup-name">{{ u.first_name }} {{ u.last_name }}</div>
+            <div class="signup-meta">{{ u.role | capitalize }} · {{ u.created_at | time_ago }}</div>
+          </div>
+          <div class="signup-status">
+            <span class="status-pill status-{{ u.status }}">
+              <span class="dot-indicator"></span>
+              {{ u.status | capitalize }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

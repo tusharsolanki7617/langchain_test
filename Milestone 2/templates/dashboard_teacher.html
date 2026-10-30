@@ -1,0 +1,131 @@
+{% extends "teacher_base.html" %}
+{% block title %}Teacher Dashboard — ExamAI{% endblock %}
+
+{% block breadcrumb %}
+  <div class="t-breadcrumb">
+    <span class="t-bc-label">TEACHER DASHBOARD</span>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="t-page-header">
+  <div>
+    <h1 class="t-page-title">Hello, {{ user.first_name }} 👋</h1>
+    <p class="t-page-sub">Here's what's happening across your tests.</p>
+  </div>
+  <a href="{{ url_for('teacher_create_test') }}" class="btn-t-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    Create test
+  </a>
+</div>
+
+<!-- Metric Cards -->
+<div class="t-metrics-row">
+  <div class="t-metric-card">
+    <div class="t-metric-top">
+      <div class="t-metric-info">
+        <div class="t-metric-label">Tests</div>
+        <div class="t-metric-val">{{ stats.total_tests }}</div>
+        <div class="t-metric-sub">{{ stats.published_tests }} published · {{ stats.drafts }} drafts</div>
+      </div>
+      <div class="t-metric-icon t-icon-teal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="t-metric-card">
+    <div class="t-metric-top">
+      <div class="t-metric-info">
+        <div class="t-metric-label">Submissions</div>
+        <div class="t-metric-val">{{ stats.submissions }}</div>
+        <div class="t-metric-sub">{{ stats.students_assigned }} students reached</div>
+      </div>
+      <div class="t-metric-icon t-icon-purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="t-metric-card">
+    <div class="t-metric-top">
+      <div class="t-metric-info">
+        <div class="t-metric-label">Awaiting review</div>
+        <div class="t-metric-val">{{ stats.awaiting_review }}</div>
+        <div class="t-metric-sub">AI-graded, ready to finalise</div>
+      </div>
+      <div class="t-metric-icon t-icon-orange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="t-metric-card">
+    <div class="t-metric-top">
+      <div class="t-metric-info">
+        <div class="t-metric-label">Average score</div>
+        <div class="t-metric-val">{% if stats.avg_score %}{{ stats.avg_score }}%{% else %}—{% endif %}</div>
+        <div class="t-metric-sub">{{ stats.flagged_sessions }} flagged sessions</div>
+      </div>
+      <div class="t-metric-icon t-icon-green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Two-col body -->
+<div class="t-dash-body">
+  <!-- Recent Submissions -->
+  <div class="t-dash-main">
+    <div class="t-card">
+      <div class="t-card-header">
+        <div>
+          <div class="t-card-title">Recent submissions</div>
+          <div class="t-card-sub">Latest attempts across all your tests.</div>
+        </div>
+        <span class="t-live-badge">
+          <span class="t-live-dot"></span>
+          {{ stats.submissions }} live now
+        </span>
+      </div>
+      <div class="t-empty-state">
+        <div class="t-empty-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/><line x1="12" y1="12" x2="12" y2="18"/></svg>
+        </div>
+        <div class="t-empty-title">No submissions yet</div>
+        <div class="t-empty-desc">Once students submit, they'll appear here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="t-dash-side">
+    <div class="t-card t-card-sm">
+      <div class="t-card-title" style="margin-bottom:1rem;">Open right now</div>
+      {% if open_tests %}
+        {% for t in open_tests %}
+        <div class="t-open-test-row">
+          <a href="{{ url_for('teacher_test_detail', test_id=t.id) }}" class="t-open-test-name">
+            {{ t.title }}
+          </a>
+          <span class="t-open-test-count">0/{{ t.get('assigned_count', 0) or 0 }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="t-empty-desc" style="padding:1rem 0;">No tests published yet.</div>
+      {% endif %}
+    </div>
+
+    <div class="t-card t-card-sm" style="margin-top:1rem;">
+      <div class="t-card-title" style="margin-bottom:0.5rem;">Average by test</div>
+      <div class="t-card-sub">Scores will appear once tests are graded.</div>
+    </div>
+
+    <a href="{{ url_for('teacher_students') }}" class="t-browse-students-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Browse students
+    </a>
+  </div>
+</div>
+{% endblock %}

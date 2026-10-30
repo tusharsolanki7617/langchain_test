@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}ExamAI — Teacher Panel{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/teacher.css') }}" />
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<body class="teacher-shell-body">
+
+  <div class="teacher-layout">
+    <!-- Sidebar -->
+    <aside class="teacher-sidebar" role="navigation" aria-label="Teacher Navigation">
+      <div class="teacher-sidebar-header">
+        <a href="{{ url_for('dashboard_teacher') }}" class="teacher-brand">
+          <div class="teacher-brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <span class="teacher-brand-text">ExamAI</span>
+        </a>
+      </div>
+
+      <!-- Profile -->
+      <div class="teacher-sidebar-profile">
+        <div class="teacher-avatar-circle">
+          {{ session.get('first_name', 'T')[:1] }}{{ session.get('last_name', 'T')[:1] }}
+        </div>
+        <div class="teacher-profile-meta">
+          <span class="teacher-profile-name">{{ session.get('first_name', '') }} {{ session.get('last_name', '') }}</span>
+          <span class="teacher-profile-role">Teacher</span>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="teacher-nav-menu">
+        <div class="teacher-sidebar-section-label">OVERVIEW</div>
+        <a href="{{ url_for('dashboard_teacher') }}"
+           class="teacher-nav-item {% if active_nav == 'dashboard' %}active{% endif %}">
+          <span class="teacher-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </span>
+          <span class="teacher-nav-text">Dashboard</span>
+        </a>
+
+        <a href="{{ url_for('teacher_tests') }}"
+           class="teacher-nav-item {% if active_nav == 'tests' %}active{% endif %}">          <span class="teacher-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </span>
+          <span class="teacher-nav-text">Tests</span>
+        </a>
+
+        <a href="{{ url_for('teacher_create_test') }}"
+           class="teacher-nav-item {% if active_nav == 'create' %}active{% endif %}">
+          <span class="teacher-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+          </span>
+          <span class="teacher-nav-text">Create Test</span>
+        </a>
+
+        <a href="{{ url_for('teacher_students') }}"
+           class="teacher-nav-item {% if active_nav == 'students' %}active{% endif %}">
+          <span class="teacher-nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </span>
+          <span class="teacher-nav-text">Students</span>
+        </a>
+      </nav>
+
+      <!-- Footer -->
+      <div class="teacher-sidebar-footer">
+        <div class="teacher-portal-card">
+          <div class="teacher-portal-icon">
+            <span>TP</span>
+          </div>
+          <div class="teacher-portal-info">
+            <div class="teacher-portal-title">Teacher portal</div>
+            <div class="teacher-portal-sub">Create tests &amp; manage students.</div>
+          </div>
+        </div>
+        <a href="{{ url_for('logout') }}" class="teacher-logout-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sign Out
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="teacher-main-wrap">
+      <!-- Top Navbar -->
+      <header class="teacher-topbar">
+        <div class="teacher-topbar-left">
+          <button type="button" class="teacher-menu-toggle" onclick="toggleTeacherSidebar()" aria-label="Toggle Navigation">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          {% block breadcrumb %}{% endblock %}
+        </div>
+
+        <div class="teacher-topbar-right">
+          <button type="button" class="teacher-theme-btn" onclick="toggleTheme()" aria-label="Toggle Theme" title="Toggle theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          </button>
+
+          <div class="teacher-user-profile">
+            <div class="teacher-avatar-topbar">
+              {{ session.get('first_name', 'T')[:1] }}{{ session.get('last_name', 'T')[:1] }}
+            </div>
+            <div class="teacher-user-meta">
+              <span class="teacher-user-name">{{ session.get('full_name', 'Teacher') }}</span>
+              <span class="teacher-user-role">Teacher</span>
+            </div>
+            <a href="{{ url_for('logout') }}" class="teacher-signout-btn" title="Sign Out">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="teacher-flash-container">
+            {% for category, message in messages %}
+              <div class="teacher-flash teacher-flash-{{ category }}">
+                <span>{{ message }}</span>
+                <button onclick="this.parentElement.remove()">✕</button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Main Page Content Block -->
+      <main class="teacher-content-container">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="teacher-toast-container" id="toast-container"></div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    }
+
+    function toggleTeacherSidebar() {
+      const sidebar = document.querySelector('.teacher-sidebar');
+      if (sidebar) sidebar.classList.toggle('open');
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `teacher-toast teacher-toast-${type}`;
+      toast.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()">✕</button>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-8px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,180 @@
+{% extends "admin_base.html" %}
+{% block title %}Users &amp; Approvals — ExamAI Admin Console{% endblock %}
+
+{% block content %}
+<div class="admin-page-header">
+  <div class="admin-breadcrumb-tag">ADMIN CONSOLE</div>
+  <h1 class="admin-page-title">Users &amp; approvals</h1>
+  <p class="admin-page-subtitle">Approve, reject or deactivate teacher and student accounts.</p>
+</div>
+
+<!-- Controls Bar: Segmented Tabs (Left) + Search & Role Filter (Right) -->
+<div class="users-controls-bar">
+  <!-- Left: Segmented Status Tabs -->
+  <div class="segmented-status-tabs" role="tablist">
+    <a href="{{ url_for('admin_users', status='pending', role=role_filter, search=search) }}"
+       class="status-tab-btn {% if status_filter == 'pending' %}active{% endif %}">
+      Pending
+    </a>
+    <a href="{{ url_for('admin_users', status='approved', role=role_filter, search=search) }}"
+       class="status-tab-btn {% if status_filter == 'approved' %}active{% endif %}">
+      Approved
+    </a>
+    <a href="{{ url_for('admin_users', status='rejected', role=role_filter, search=search) }}"
+       class="status-tab-btn {% if status_filter == 'rejected' %}active{% endif %}">
+      Rejected
+    </a>
+    <a href="{{ url_for('admin_users', status='all', role=role_filter, search=search) }}"
+       class="status-tab-btn {% if status_filter in ('all', '', None) %}active{% endif %}">
+      All
+    </a>
+  </div>
+
+  <!-- Right: Search Input + Role Dropdown -->
+  <form method="GET" action="{{ url_for('admin_users') }}" class="users-search-filter-form" id="users-filter-form">
+    <input type="hidden" name="status" value="{{ status_filter }}" />
+
+    <div class="search-input-box">
+      <span class="search-lens-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </span>
+      <input type="text" name="search" id="search-input" class="search-field"
+             placeholder="Search name, email, roll no..."
+             value="{{ search }}"
+             onchange="this.form.submit()" />
+      {% if search %}
+      <a href="{{ url_for('admin_users', status=status_filter, role=role_filter) }}" class="search-clear-btn">✕</a>
+      {% endif %}
+    </div>
+
+    <div class="role-select-box">
+      <select name="role" id="role-select" class="role-dropdown" onchange="this.form.submit()">
+        <option value="all" {% if role_filter in ('all', '', None) %}selected{% endif %}>All roles</option>
+        <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Students</option>
+        <option value="teacher" {% if role_filter == 'teacher' %}selected{% endif %}>Teachers</option>
+      </select>
+    </div>
+  </form>
+</div>
+
+<!-- Users Data Table Panel -->
+<div class="exam-panel users-table-panel">
+  <div class="table-responsive">
+    <table class="exam-table">
+      <thead>
+        <tr>
+          <th style="width: 24%;">User</th>
+          <th style="width: 12%;">Role</th>
+          <th style="width: 26%;">Details</th>
+          <th style="width: 12%;">Joined</th>
+          <th style="width: 13%;">Status</th>
+          <th style="width: 8%;">Active</th>
+          <th style="width: 15%; text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr id="user-row-{{ u.id }}">
+          <!-- User info with avatar -->
+          <td>
+            <div class="table-user-cell">
+              <div class="table-avatar">
+                {{ u | initials }}
+              </div>
+              <div class="table-user-names">
+                <span class="user-primary-name">{{ u.first_name }} {{ u.last_name }}</span>
+                <span class="user-secondary-email">{{ u.email }}</span>
+              </div>
+            </div>
+          </td>
+
+          <!-- Role Pill -->
+          <td>
+            <span class="role-badge role-badge-{{ u.role }}">
+              {{ u.role | capitalize }}
+            </span>
+          </td>
+
+          <!-- Details -->
+          <td>
+            <div class="table-details-cell" title="{{ u.institute or '' }} {{ u.roll_number or '' }} {{ u.class_year or u.department or '' }}">
+              {% set details_parts = [] %}
+              {% if u.institute %}{% set _ = details_parts.append(u.institute) %}{% endif %}
+              {% if u.roll_number %}{% set _ = details_parts.append(u.roll_number) %}{% endif %}
+              {% if u.class_year %}{% set _ = details_parts.append(u.class_year) %}{% endif %}
+              {% if u.department %}{% set _ = details_parts.append(u.department) %}{% endif %}
+              {{ details_parts | join(' · ') if details_parts else '—' }}
+            </div>
+          </td>
+
+          <!-- Joined Date -->
+          <td>
+            <span class="table-date-cell">{{ u.created_at | format_date }}</span>
+          </td>
+
+          <!-- Status -->
+          <td id="status-badge-{{ u.id }}">
+            <span class="status-pill status-{{ u.status }}">
+              <span class="dot-indicator"></span>
+              {{ u.status | capitalize }}
+            </span>
+            {% if u.status == 'rejected' and u.reject_reason %}
+            <div class="reject-reason-text">{{ u.reject_reason }}</div>
+            {% endif %}
+          </td>
+
+          <!-- Active Toggle Switch -->
+          <td>
+            <label class="exam-switch" aria-label="Toggle active for {{ u.first_name }}">
+              <input type="checkbox" id="active-toggle-{{ u.id }}"
+                     {{ 'checked' if u.active else '' }}
+                     onchange="toggleActive({{ u.id }}, this.checked)" />
+              <span class="slider-round"></span>
+            </label>
+          </td>
+
+          <!-- Actions -->
+          <td id="actions-cell-{{ u.id }}" style="text-align: right;">
+            <div class="table-action-btns">
+              {% if u.status == 'pending' %}
+              <button type="button" class="exam-btn exam-btn-primary-sm" id="tbl-approve-{{ u.id }}"
+                      onclick="approveUser({{ u.id }})">
+                ✓ Approve
+              </button>
+              <button type="button" class="exam-btn exam-btn-outline-sm" id="tbl-reject-{{ u.id }}"
+                      onclick="openRejectModal({{ u.id }}, '{{ u.first_name }} {{ u.last_name }}')">
+                ✕ Reject
+              </button>
+              {% elif u.status == 'approved' %}
+              <button type="button" class="exam-btn exam-btn-outline-sm" id="tbl-reject-{{ u.id }}"
+                      onclick="openRejectModal({{ u.id }}, '{{ u.first_name }} {{ u.last_name }}')">
+                ✕ Reject
+              </button>
+              {% else %}
+              <button type="button" class="exam-btn exam-btn-primary-sm" id="tbl-approve-{{ u.id }}"
+                      onclick="approveUser({{ u.id }})">
+                ✓ Approve
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="table-empty-row">
+            <div class="queue-empty-state">
+              <span class="empty-icon">🔍</span>
+              <p>No users found matching the selected filter criteria.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+

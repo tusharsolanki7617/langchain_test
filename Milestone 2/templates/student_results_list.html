@@ -1,0 +1,121 @@
+{% extends "student_base.html" %}
+{% block title %}Results — ExamAI Student{% endblock %}
+
+{% block content %}
+<div class="s-page-header-row">
+  <div>
+    <div class="s-page-label">RESULTS</div>
+    <h1 class="s-page-title">Your practice history</h1>
+    <p class="s-page-sub">All your AI practice sessions and scores.</p>
+  </div>
+  <a href="{{ url_for('student_practice') }}" class="s-btn-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New practice
+  </a>
+</div>
+
+<!-- Summary stats -->
+{% if history %}
+{% set submitted_h = history|selectattr('submitted')|list %}
+<div class="s-metric-row" style="margin-bottom:1.5rem;">
+  <div class="s-metric-card">
+    <div class="s-metric-top"><span class="s-metric-label">Total sessions</span></div>
+    <div class="s-metric-value">{{ history|length }}</div>
+    <div class="s-metric-sub">{{ submitted_h|length }} submitted</div>
+  </div>
+  <div class="s-metric-card">
+    <div class="s-metric-top"><span class="s-metric-label">Total correct</span></div>
+    <div class="s-metric-value">{{ history|map(attribute='correct_count')|select|sum }}</div>
+    <div class="s-metric-sub">answers correct</div>
+  </div>
+  <div class="s-metric-card">
+    <div class="s-metric-top"><span class="s-metric-label">Avg score</span></div>
+    {% if submitted_h %}
+      {% set avg = (submitted_h|map(attribute='score')|select|sum / submitted_h|length) %}
+      {% set avg_total = (submitted_h|map(attribute='total_marks')|select|sum / submitted_h|length) %}
+      <div class="s-metric-value">{{ ((avg / avg_total * 100) if avg_total else 0)|int }}%</div>
+    {% else %}
+      <div class="s-metric-value">—</div>
+    {% endif %}
+    <div class="s-metric-sub">across submitted</div>
+  </div>
+  <div class="s-metric-card">
+    <div class="s-metric-top"><span class="s-metric-label">Best score</span></div>
+    {% if submitted_h %}
+      {% set best = submitted_h|sort(attribute='score',reverse=true)|first %}
+      <div class="s-metric-value">{{ ((best.score / best.total_marks * 100) if best.total_marks else 0)|int }}%</div>
+      <div class="s-metric-sub">{{ best.topic or best.subject }}</div>
+    {% else %}
+      <div class="s-metric-value">—</div>
+      <div class="s-metric-sub">No submissions yet</div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Results list -->
+{% if history %}
+<div class="s-results-list">
+  {% for h in history %}
+  <div class="s-result-row-card">
+    <div class="s-result-row-left">
+      <div class="s-result-circle {% if h.submitted %}{% set pct = ((h.score / h.total_marks * 100) if h.total_marks else 0)|int %}{% if pct >= 70 %}good{% elif pct >= 40 %}ok{% else %}low{% endif %}{% else %}pending{% endif %}">
+        {% if h.submitted %}
+          {{ ((h.score / h.total_marks * 100) if h.total_marks else 0)|int }}%
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div>
+        <div class="s-result-title">{{ h.topic or h.subject }} practice</div>
+        <div class="s-result-meta">
+          <span class="s-diff-badge {{ h.difficulty or 'medium' }}">{{ (h.difficulty or 'medium')|capitalize }}</span>
+          {{ h.q_count or 0 }} Q &nbsp;•&nbsp; {{ h.total_marks or 0 }} marks
+          {% if h.submitted_at %}&nbsp;•&nbsp; {{ h.submitted_at|time_ago }}{% endif %}
+        </div>
+        {% if h.submitted %}
+        <div class="s-result-breakdown">
+          <span class="s-rb-correct">✓ {{ h.correct_count or 0 }} correct</span>
+          <span class="s-rb-wrong">✗ {{ h.wrong_count or 0 }} wrong</span>
+          <span class="s-rb-skip">— {{ h.skipped_count or 0 }} skipped</span>
+        </div>
+        {% else %}
+        <div style="margin-top:.25rem;font-size:.8rem;color:#f59e0b;">Not submitted yet</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="s-result-row-actions">
+      {% if h.submitted %}
+      <a href="{{ url_for('student_result', session_id=h.id) }}" class="s-btn-sm-outline">View result</a>
+      <a href="{{ url_for('student_take_test', session_id=h.id) }}" class="s-btn-sm-outline">Retake</a>
+      {% else %}
+      <a href="{{ url_for('student_take_test', session_id=h.id) }}" class="s-btn-sm-primary">Continue</a>
+      {% endif %}
+      <button class="s-btn-sm-ghost s-delete-practice" data-id="{{ h.id }}" title="Delete">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="s-empty-full">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" width="56" height="56"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+  <div class="s-empty-title">No practice history yet</div>
+  <div class="s-empty-sub">Start a practice session and your results will appear here.</div>
+  <a href="{{ url_for('student_practice') }}" class="s-btn-primary" style="margin-top:1rem;">Start practising</a>
+</div>
+{% endif %}
+
+<script>
+document.querySelectorAll('.s-delete-practice').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    if (!confirm('Delete this practice session?')) return;
+    const id = btn.dataset.id;
+    const res = await fetch(`/api/student/practice/${id}`, { method: 'DELETE' });
+    if (res.ok) btn.closest('.s-result-row-card').remove();
+  });
+});
+</script>
+{% endblock %}
+

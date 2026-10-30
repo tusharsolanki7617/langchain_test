@@ -1,0 +1,234 @@
+{% extends "teacher_base.html" %}
+{% block title %}Create Test — ExamAI Teacher{% endblock %}
+
+{% block breadcrumb %}
+  <div class="t-breadcrumb"><span class="t-bc-label">ASSESSMENTS</span></div>
+{% endblock %}
+
+{% block content %}
+<!-- Stepper -->
+<div class="t-stepper">
+  <div class="t-step t-step-active">
+    <div class="t-step-circle t-step-circle-active">1</div>
+    <div class="t-step-label">Details &amp; rules</div>
+  </div>
+  <div class="t-step-line"></div>
+  <div class="t-step t-step-inactive">
+    <div class="t-step-circle">2</div>
+    <div class="t-step-label">Questions</div>
+  </div>
+  <div class="t-step-line"></div>
+  <div class="t-step t-step-inactive">
+    <div class="t-step-circle">3</div>
+    <div class="t-step-label">Assign students</div>
+  </div>
+  <div class="t-step-line"></div>
+  <div class="t-step t-step-inactive">
+    <div class="t-step-circle">4</div>
+    <div class="t-step-label">Publish</div>
+  </div>
+</div>
+
+<p class="t-step-hint">Start with the basics. You'll add questions and students next.</p>
+
+<form id="create-test-form" class="t-create-form-layout">
+  <!-- Left: Test details -->
+  <div class="t-create-left">
+    <div class="t-form-section">
+      <div class="t-form-section-title">Test details</div>
+      <div class="t-form-section-sub">What students will see before they start.</div>
+
+      <div class="t-form-group">
+        <label class="t-form-label">Title</label>
+        <input type="text" id="f-title" name="title" class="t-form-input"
+               placeholder="e.g. Mid-semester Physics Exam" required maxlength="255" />
+      </div>
+
+      <div class="t-form-row-2">
+        <div class="t-form-group">
+          <label class="t-form-label">Subject</label>
+          <input type="text" id="f-subject" name="subject" class="t-form-input"
+                 placeholder="e.g. Physics" maxlength="255" />
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Topic</label>
+          <input type="text" id="f-topic" name="topic" class="t-form-input"
+                 placeholder="e.g. laws of thermodynamics" maxlength="255" />
+          <span class="t-form-hint">Used as the default topic for AI-generated questions</span>
+        </div>
+      </div>
+
+      <div class="t-form-group">
+        <label class="t-form-label">Description</label>
+        <textarea id="f-description" name="description" class="t-form-textarea" rows="3"
+                  placeholder="Brief description of this test..."></textarea>
+      </div>
+
+      <div class="t-form-group">
+        <label class="t-form-label">Instructions for students</label>
+        <textarea id="f-instructions" name="instructions" class="t-form-textarea t-form-textarea-tall" rows="4"
+                  placeholder="e.g. All questions are mandatory. No books allowed."></textarea>
+      </div>
+
+      <div class="t-form-row-3">
+        <div class="t-form-group">
+          <label class="t-form-label">Difficulty</label>
+          <select id="f-difficulty" name="difficulty" class="t-form-select">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Duration (minutes)</label>
+          <input type="number" id="f-duration" name="duration_minutes" class="t-form-input"
+                 value="30" min="1" max="300" />
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Max tab switches</label>
+          <input type="number" id="f-tabs" name="max_tab_switches" class="t-form-input"
+                 value="3" min="0" max="20" />
+          <span class="t-form-hint">Before the session is flagged</span>
+        </div>
+      </div>
+
+      <div class="t-form-row-2">
+        <div class="t-form-group">
+          <label class="t-form-label">Opens at</label>
+          <input type="datetime-local" id="f-opens" name="opens_at" class="t-form-input" />
+          <span class="t-form-hint">Leave empty to open as soon as it's published</span>
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Closes at</label>
+          <input type="datetime-local" id="f-closes" name="closes_at" class="t-form-input" />
+          <span class="t-form-hint">Leave empty for no deadline</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Rules & integrity -->
+  <div class="t-create-right">
+    <div class="t-form-section t-rules-card">
+      <div class="t-form-section-title">Rules &amp; integrity</div>
+      <div class="t-form-section-sub">Proctoring signals never change marks; they inform your review.</div>
+
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        </div>
+        <div class="t-rule-info">
+          <div class="t-rule-title">AI webcam proctoring</div>
+          <div class="t-rule-desc">Face presence, multiple faces, gaze and tab-switch monitoring</div>
+        </div>
+        <label class="t-toggle">
+          <input type="checkbox" id="r-proctoring" name="ai_proctoring" checked />
+          <span class="t-toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-grey">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="t-rule-info">
+          <div class="t-rule-title">Negative marking</div>
+          <div class="t-rule-desc">Deduct each question's negative marks for wrong objective answers</div>
+        </div>
+        <label class="t-toggle">
+          <input type="checkbox" id="r-negative" name="negative_marking" />
+          <span class="t-toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </div>
+        <div class="t-rule-info">
+          <div class="t-rule-title">Shuffle questions</div>
+          <div class="t-rule-desc">Every student gets a different question order</div>
+        </div>
+        <label class="t-toggle">
+          <input type="checkbox" id="r-shuffle-q" name="shuffle_questions" checked />
+          <span class="t-toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-teal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </div>
+        <div class="t-rule-info">
+          <div class="t-rule-title">Shuffle options</div>
+          <div class="t-rule-desc">Randomise MCQ option order per student</div>
+        </div>
+        <label class="t-toggle">
+          <input type="checkbox" id="r-shuffle-o" name="shuffle_options" checked />
+          <span class="t-toggle-slider"></span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn-t-primary t-create-cta" id="create-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Create draft &amp; continue
+      </button>
+      <p class="t-create-hint">ⓘ The server enforces the timer — students can't extend it.</p>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('create-test-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('create-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span>Creating…</span>';
+
+  const payload = {
+    title: document.getElementById('f-title').value.trim(),
+    subject: document.getElementById('f-subject').value.trim(),
+    topic: document.getElementById('f-topic').value.trim(),
+    description: document.getElementById('f-description').value.trim(),
+    duration_minutes: parseInt(document.getElementById('f-duration').value) || 30,
+    instructions: document.getElementById('f-instructions').value.trim(),
+    difficulty: document.getElementById('f-difficulty').value,
+    max_tab_switches: parseInt(document.getElementById('f-tabs').value) || 3,
+    opens_at: document.getElementById('f-opens').value || null,
+    closes_at: document.getElementById('f-closes').value || null,
+    ai_proctoring: document.getElementById('r-proctoring').checked ? 1 : 0,
+    negative_marking: document.getElementById('r-negative').checked ? 1 : 0,
+    shuffle_questions: document.getElementById('r-shuffle-q').checked ? 1 : 0,
+    shuffle_options: document.getElementById('r-shuffle-o').checked ? 1 : 0,
+  };
+
+  if (!payload.title) {
+    showToast('Please enter a test title.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Create draft & continue';
+    return;
+  }
+
+  try {
+    const resp = await fetch('/api/teacher/tests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast('Test created!', 'success');
+      setTimeout(() => window.location.href = `/teacher/tests/${data.test_id}`, 500);
+    } else {
+      showToast(data.error || 'Failed to create test.', 'error');
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showToast('Network error. Please try again.', 'error');
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

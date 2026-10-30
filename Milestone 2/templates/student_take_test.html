@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ session_data.topic or session_data.subject or 'Practice' }} — ExamAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}" />
+</head>
+<body class="s-take-body">
+
+<!-- Top Bar -->
+<header class="s-take-topbar">
+  <div class="s-take-topbar-left">
+    <a href="{{ url_for('student_practice') }}" class="s-take-brand">
+      <div class="s-take-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      ExamAI
+    </a>
+    <div class="s-take-test-name">
+      {{ session_data.topic or session_data.subject or 'Practice test' }}
+      <span class="s-take-saved">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
+        All changes saved
+      </span>
+    </div>
+  </div>
+  <div class="s-take-topbar-right">
+    {% if session_data.timed_practice and session_data.duration_minutes %}
+    <div class="s-take-timer" id="take-timer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="timer-display">{{ session_data.duration_minutes }}:00</span>
+    </div>
+    {% endif %}
+    <button class="s-take-submit-btn" onclick="openSubmitModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Submit
+    </button>
+  </div>
+</header>
+
+<!-- Main layout -->
+<div class="s-take-layout">
+  <!-- Left: Question nav panel -->
+  <aside class="s-take-sidebar">
+    <div class="s-take-sidebar-header">
+      <span class="s-take-qs-label">Questions</span>
+      <span class="s-take-answered-count"><span id="answered-count">0</span>/{{ questions|length }} answered</span>
+    </div>
+    <!-- Progress bar -->
+    <div class="s-take-progress">
+      <div class="s-take-progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <!-- Question number grid -->
+    <div class="s-take-q-grid" id="q-nav-grid">
+      {% for q in questions %}
+      <button class="s-take-q-btn {% if loop.index == 1 %}active{% endif %}"
+              id="qbtn-{{ loop.index }}"
+              onclick="goToQuestion({{ loop.index }})">{{ loop.index }}</button>
+      {% endfor %}
+    </div>
+    <!-- Legend -->
+    <div class="s-take-legend">
+      <span class="s-leg-item"><span class="s-leg-dot s-leg-answered"></span> Answered</span>
+      <span class="s-leg-item"><span class="s-leg-dot s-leg-flagged"></span> Flagged</span>
+      <span class="s-leg-item"><span class="s-leg-dot s-leg-notyet"></span> Not yet</span>
+    </div>
+  </aside>
+
+  <!-- Right: Question content -->
+  <main class="s-take-main">
+    {% for q in questions %}
+    <div class="s-take-question-card {% if loop.index != 1 %}s-hidden{% endif %}"
+         id="q-card-{{ loop.index }}" data-qidx="{{ loop.index0 }}" data-type="{{ q.question_type }}">
+      <!-- Question header -->
+      <div class="s-take-q-header">
+        <div class="s-take-q-meta">
+          <span class="s-take-q-num">Question {{ loop.index }} of {{ questions|length }}</span>
+          <span class="s-take-q-type-badge">{{ q.question_type|replace('_',' ')|title }}</span>
+          <span class="s-take-q-marks">{{ q.marks }} mark{{ 's' if q.marks != 1 }}</span>
+        </div>
+        <button class="s-flag-btn" id="flag-btn-{{ loop.index }}"
+                onclick="toggleFlag({{ loop.index }})" title="Flag for review">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          Flag for review
+        </button>
+      </div>
+
+      <!-- Question text -->
+      <div class="s-take-q-text">{{ q.question_text }}</div>
+
+      <!-- MCQ options -->
+      {% if q.question_type in ['mcq', 'multiple_choice'] %}
+      <div class="s-take-options" id="opts-{{ loop.index }}">
+        {% for opt in q.options_parsed or [] %}
+        <label class="s-take-option" id="opt-{{ loop.index }}-{{ opt.id }}">
+          <input type="radio" name="q{{ loop.index }}" value="{{ opt.id }}"
+                 onchange="recordAnswer({{ loop.index }}, '{{ opt.id }}')" />
+          <span class="s-take-opt-letter">{{ opt.id }}</span>
+          <span class="s-take-opt-text">{{ opt.text }}</span>
+          <span class="s-take-opt-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+        {% endfor %}
+      </div>
+
+      {% elif q.question_type == 'multi_select' %}
+      <div class="s-take-options" id="opts-{{ loop.index }}">
+        <div class="s-take-multi-hint">Select all that apply</div>
+        {% for opt in q.options_parsed or [] %}
+        <label class="s-take-option s-take-option-multi" id="opt-{{ loop.index }}-{{ opt.id }}">
+          <input type="checkbox" name="q{{ loop.index }}" value="{{ opt.id }}"
+                 onchange="recordMultiAnswer({{ loop.index }})" />
+          <span class="s-take-opt-letter">{{ opt.id }}</span>
+          <span class="s-take-opt-text">{{ opt.text }}</span>
+        </label>
+        {% endfor %}
+      </div>
+
+      {% elif q.question_type in ['short_answer', 'long_answer'] %}
+      <div class="s-take-written" id="opts-{{ loop.index }}">
+        <div class="s-take-ocr-hint">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Wrote it on paper? Add a photo and we'll type it out for you.
+          <label class="s-take-photo-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload photo
+            <input type="file" accept="image/*" style="display:none;" onchange="handlePhotoUpload(this, {{ loop.index }})" />
+          </label>
+        </div>
+        <textarea class="s-take-textarea" id="written-{{ loop.index }}"
+                  placeholder="Write your answer in a few sentences… or add a photo above."
+                  oninput="recordWrittenAnswer({{ loop.index }}, this.value)"></textarea>
+        <div class="s-take-word-count">
+          {{ q.question_type|replace('_',' ')|title }}
+          <span id="wc-{{ loop.index }}" style="margin-left:auto;">0 words</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <!-- Nav bar -->
+    <div class="s-take-nav-bar">
+      <button class="s-take-nav-btn" id="prev-btn" onclick="prevQuestion()" disabled>
+        ← Previous
+      </button>
+      <span class="s-take-nav-tip">Tip: use ← → keys to move between questions</span>
+      <button class="s-take-nav-btn s-take-nav-next" id="next-btn" onclick="nextQuestion()">
+        Next →
+      </button>
+    </div>
+  </main>
+</div>
+
+<!-- Submit Modal -->
+<div class="s-modal-overlay" id="submit-modal" onclick="closeSubmitModal()">
+  <div class="s-modal-box" onclick="event.stopPropagation()">
+    <div class="s-modal-header">
+      <h3>Submit your test?</h3>
+      <button class="s-modal-close" onclick="closeSubmitModal()">✕</button>
+    </div>
+    <p class="s-modal-sub">You won't be able to change your answers after submitting.</p>
+    <div class="s-submit-stats">
+      <div class="s-submit-stat s-stat-green">
+        <div class="s-stat-val" id="stat-answered">0</div>
+        <div class="s-stat-label">Answered</div>
+      </div>
+      <div class="s-submit-stat s-stat-red">
+        <div class="s-stat-val" id="stat-unanswered">{{ questions|length }}</div>
+        <div class="s-stat-label">Unanswered</div>
+      </div>
+      <div class="s-submit-stat s-stat-grey">
+        <div class="s-stat-val" id="stat-flagged">0</div>
+        <div class="s-stat-label">Flagged</div>
+      </div>
+    </div>
+    <div class="s-modal-footer">
+      <button class="s-modal-cancel-btn" onclick="closeSubmitModal()">Keep working</button>
+      <button class="s-modal-submit-btn" onclick="submitTest()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Submit test
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SESSION_ID = {{ session_data.id }};
+const TOTAL_Q = {{ questions|length }};
+const TIMED = {{ 'true' if session_data.timed_practice else 'false' }};
+const DURATION_SECS = {{ (session_data.duration_minutes or 0) * 60 }};
+
+let currentQ = 1;
+let answers = {}; // {qIdx: answer}
+let flags = new Set();
+let startTime = Date.now();
+let timerInterval = null;
+let remainingSecs = DURATION_SECS;
+
+// ── Navigation ──
+function goToQuestion(n) {
+  document.getElementById('q-card-'+currentQ).classList.add('s-hidden');
+  document.getElementById('qbtn-'+currentQ).classList.remove('active');
+  currentQ = n;
+  document.getElementById('q-card-'+n).classList.remove('s-hidden');
+  document.getElementById('qbtn-'+n).classList.add('active');
+  document.getElementById('prev-btn').disabled = (n === 1);
+  document.getElementById('next-btn').disabled = (n === TOTAL_Q);
+  window.scrollTo(0,0);
+}
+
+function nextQuestion() { if (currentQ < TOTAL_Q) goToQuestion(currentQ+1); }
+function prevQuestion() { if (currentQ > 1) goToQuestion(currentQ-1); }
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowRight') nextQuestion();
+  if (e.key === 'ArrowLeft') prevQuestion();
+});
+
+// ── Answer recording ──
+function recordAnswer(qNum, val) {
+  const idx = qNum - 1;
+  answers[idx] = val;
+  // Highlight selected option
+  document.querySelectorAll(`#opts-${qNum} .s-take-option`).forEach(el => {
+    el.classList.remove('s-take-option-selected');
+  });
+  document.querySelector(`#opts-${qNum} input[value="${val}"]`)?.closest('.s-take-option')?.classList.add('s-take-option-selected');
+  updateProgress();
+}
+
+function recordMultiAnswer(qNum) {
+  const idx = qNum - 1;
+  const checks = [...document.querySelectorAll(`#opts-${qNum} input[type="checkbox"]:checked`)];
+  answers[idx] = checks.map(c => c.value);
+  updateProgress();
+}
+
+function recordWrittenAnswer(qNum, val) {
+  const idx = qNum - 1;
+  answers[idx] = val;
+  const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+  document.getElementById('wc-'+qNum).textContent = words + ' word' + (words!==1?'s':'');
+  // Mark btn as answered if non-empty
+  const btn = document.getElementById('qbtn-'+qNum);
+  if (val.trim()) {
+    btn.classList.add('s-q-answered');
+    btn.classList.remove('s-q-notyet');
+  } else {
+    btn.classList.remove('s-q-answered');
+  }
+  updateProgress();
+}
+
+function handlePhotoUpload(input, qNum) {
+  if (!input.files[0]) return;
+  const ta = document.getElementById('written-'+qNum);
+  ta.value = '[Photo attached — OCR will extract text on submission]';
+  recordWrittenAnswer(qNum, ta.value);
+}
+
+function updateProgress() {
+  const answered = Object.keys(answers).filter(k => {
+    const v = answers[k];
+    return v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
+  }).length;
+  document.getElementById('answered-count').textContent = answered;
+  const pct = TOTAL_Q ? (answered / TOTAL_Q * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  // Update nav buttons
+  for (let i = 1; i <= TOTAL_Q; i++) {
+    const btn = document.getElementById('qbtn-'+i);
+    const idx = i - 1;
+    const v = answers[idx];
+    const hasAnswer = v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
+    btn.classList.toggle('s-q-answered', hasAnswer && !flags.has(i));
+    btn.classList.toggle('s-q-flagged', flags.has(i));
+  }
+  // Update modal stats
+  document.getElementById('stat-answered').textContent = answered;
+  document.getElementById('stat-unanswered').textContent = TOTAL_Q - answered;
+  document.getElementById('stat-flagged').textContent = flags.size;
+}
+
+// ── Flagging ──
+function toggleFlag(qNum) {
+  const btn = document.getElementById('flag-btn-'+qNum);
+  if (flags.has(qNum)) {
+    flags.delete(qNum);
+    btn.classList.remove('s-flagged-active');
+  } else {
+    flags.add(qNum);
+    btn.classList.add('s-flagged-active');
+  }
+  updateProgress();
+}
+
+// ── Timer ──
+if (TIMED && DURATION_SECS > 0) {
+  timerInterval = setInterval(() => {
+    remainingSecs--;
+    const m = Math.floor(remainingSecs / 60);
+    const s = remainingSecs % 60;
+    document.getElementById('timer-display').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+    if (remainingSecs <= 0) {
+      clearInterval(timerInterval);
+      submitTest();
+    }
+  }, 1000);
+}
+
+// ── Submit ──
+function openSubmitModal() {
+  updateProgress();
+  document.getElementById('submit-modal').classList.add('open');
+}
+function closeSubmitModal() {
+  document.getElementById('submit-modal').classList.remove('open');
+}
+
+async function submitTest() {
+  closeSubmitModal();
+  if (timerInterval) clearInterval(timerInterval);
+  const timeTaken = Math.floor((Date.now() - startTime) / 1000);
+  const submitBtn = document.querySelector('.s-take-submit-btn');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
+
+  try {
+    const resp = await fetch(`/api/student/practice/${SESSION_ID}/submit`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ answers, time_taken_secs: timeTaken })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      window.location.href = `/student/practice/${SESSION_ID}/result`;
+    } else {
+      alert('Submission failed: ' + (data.error || 'Unknown error'));
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit'; }
+    }
+  } catch(e) {
+    alert('Network error during submission.');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit'; }
+  }
+}
+</script>
+</body>
+</html>
+

@@ -315,6 +315,10 @@ def create_model(provider):
     raise ValueError("Select OpenAI or Gemini.")
 
 
+# Alias used by teacher and student AI generation routes
+get_llm = create_model
+
+
 def parse_response(text):
     """Convert the AI response into a Python dictionary."""
     text = text.strip()
@@ -523,7 +527,15 @@ def signup():
         roll_number      = request.form.get("roll_number", "").strip()
         class_year       = request.form.get("class_year", "").strip()
         # Teacher-specific
+        teacher_inst     = request.form.get("teacher_institute", "").strip()
         department       = request.form.get("department", "").strip()
+        designation      = request.form.get("designation", "").strip()
+        if role == "teacher":
+            if teacher_inst:
+                institute = teacher_inst
+            if designation:
+                department = f"{department} · {designation}" if department else designation
+
         # Admin
         admin_code       = request.form.get("admin_code", "").strip()
 
@@ -586,33 +598,68 @@ def logout():
 
 
 # ═══════════════════════════════════════════════════════════════
+# JINJA TEMPLATE FILTERS
+# ═══════════════════════════════════════════════════════════════
+
+@app.template_filter("time_ago")
+def time_ago_filter(dt):
+    if not dt:
+        return "Just now"
+    import datetime
+    if isinstance(dt, str):
+        try:
+            dt = datetime.datetime.fromisoformat(dt.replace("Z", "+00:00"))
+        except Exception:
+            return dt[:10]
+    now = datetime.datetime.now()
+    diff = now - dt
+    total_sec = max(0, int(diff.total_seconds()))
+    if total_sec < 60:
+        return f"{total_sec} Seconds Ago" if total_sec != 1 else "1 Second Ago"
+    minutes = total_sec // 60
+    if minutes < 60:
+        return f"{minutes} Minutes Ago" if minutes != 1 else "1 Minute Ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} Hours Ago" if hours != 1 else "1 Hour Ago"
+    days = hours // 24
+    if days < 7:
+        return f"{days} Days Ago" if days != 1 else "1 Day Ago"
+    return dt.strftime("%d %b %Y")
+
+
+@app.template_filter("format_date")
+def format_date_filter(dt):
+    if not dt:
+        return "—"
+    import datetime
+    if isinstance(dt, str):
+        try:
+            dt = datetime.datetime.fromisoformat(dt.replace("Z", "+00:00"))
+        except Exception:
+            return dt[:10]
+    return dt.strftime("%d %b %Y")
+
+
+@app.template_filter("initials")
+def initials_filter(val):
+    if not val:
+        return "PA"
+    if isinstance(val, dict):
+        fn = (val.get("first_name") or "")[:1].upper()
+        ln = (val.get("last_name") or "")[:1].upper()
+        return (fn + ln) or "PA"
+    parts = str(val).strip().split()
+    if len(parts) >= 2:
+        return (parts[0][:1] + parts[1][:1]).upper()
+    return parts[0][:2].upper() if parts else "PA"
+
+
+# ═══════════════════════════════════════════════════════════════
 # DASHBOARDS
 # ═══════════════════════════════════════════════════════════════
 
-@app.route("/dashboard/student")
-@login_required
-@role_required("student")
-def dashboard_student():
-    user = db.find_user_by_id(session["user_id"])
-    if not user:
-        session.clear()
-        flash("User account not found. Please log in again.", "error")
-        return redirect(url_for("login"))
-    return render_template("dashboard_student.html", user=user)
-
-
-@app.route("/dashboard/teacher")
-@login_required
-@role_required("teacher")
-def dashboard_teacher():
-    user = db.find_user_by_id(session["user_id"])
-    if not user:
-        session.clear()
-        flash("User account not found. Please log in again.", "error")
-        return redirect(url_for("login"))
-    return render_template("dashboard_teacher.html", user=user)
-
-
+@app.route("/admin/dashboard")
 @app.route("/dashboard/admin")
 @login_required
 @role_required("admin")
@@ -622,23 +669,53 @@ def dashboard_admin():
         session.clear()
         flash("User account not found. Please log in again.", "error")
         return redirect(url_for("login"))
-    status_filter = request.args.get("status", "")
-    role_filter   = request.args.get("role_filter", "")
-    search        = request.args.get("search", "")
-    users         = db.get_all_users(status_filter=status_filter or None,
-                                     role_filter=role_filter or None,
-                                     search=search or None)
-    counts        = db.get_role_counts()
-    recent_logs   = db.get_recent_logs(limit=15)
-    recent_signups= db.get_recent_signups(limit=8)
-    pending_count = counts.get("pending", 0)
+
+    metrics        = db.get_platform_metrics()
+    approval_queue = db.get_pending_users()
+    recent_signups = db.get_recent_signups(limit=8)
+    pending_count  = metrics.get("pending", 0)
 
     return render_template(
-        "dashboard_admin.html",
-        user=user, users=users, counts=counts,
-        recent_logs=recent_logs, recent_signups=recent_signups,
+        "admin_dashboard.html",
+        user=user,
+        metrics=metrics,
+        approval_queue=approval_queue,
+        recent_signups=recent_signups,
         pending_count=pending_count,
-        status_filter=status_filter, role_filter=role_filter, search=search
+        active_tab="overview"
+    )
+
+
+@app.route("/admin/users")
+@login_required
+@role_required("admin")
+def admin_users():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        session.clear()
+        flash("User account not found. Please log in again.", "error")
+        return redirect(url_for("login"))
+
+    status_filter = request.args.get("status", "all")
+    role_filter   = request.args.get("role", "all")
+    search        = request.args.get("search", "")
+
+    users   = db.get_all_users(status_filter=status_filter,
+                               role_filter=role_filter,
+                               search=search)
+    metrics = db.get_platform_metrics()
+    pending_count = metrics.get("pending", 0)
+
+    return render_template(
+        "admin_users.html",
+        user=user,
+        users=users,
+        metrics=metrics,
+        pending_count=pending_count,
+        status_filter=status_filter,
+        role_filter=role_filter,
+        search=search,
+        active_tab="users"
     )
 
 
@@ -1051,13 +1128,776 @@ def check_email():
     return jsonify({"available": user is None})
 
 
+@app.route("/api/demo-login/<role>", methods=["POST"])
+def api_demo_login(role):
+    role = role.lower()
+    if role not in ("student", "teacher", "admin"):
+        return jsonify({"success": False, "error": "Invalid role specified"}), 400
+
+    demo_email = f"{role}@edux.com"
+    user = db.find_user_by_email(demo_email)
+
+    # If demo email user isn't found, pick the first active approved user with that role
+    if not user:
+        conn = db.get_connection()
+        cur = conn.cursor(dictionary=True) if db.use_mysql else conn.cursor()
+        ph = "%s" if db.use_mysql else "?"
+        cur.execute(
+            f"SELECT * FROM users WHERE role = {ph} AND (status = 'approved' OR role = 'admin') AND active = 1 LIMIT 1",
+            (role,)
+        )
+        row = cur.fetchone()
+        user = dict(row) if row and not db.use_mysql else row
+        cur.close()
+        conn.close()
+
+    if not user:
+        return jsonify({"success": False, "error": f"No active {role} user found in database"}), 404
+
+    session.clear()
+    session["user_id"]    = user["id"]
+    session["first_name"] = user["first_name"]
+    session["last_name"]  = user["last_name"]
+    session["full_name"]  = f"{user['first_name']} {user['last_name']}"
+    session["email"]      = user["email"]
+    session["role"]       = user["role"]
+
+    db.update_last_login(user["id"])
+    db.log_activity(user["id"], user["email"], user["role"], "DEMO_LOGIN",
+                    f"Signed in via 1-click quick login as {user['role']}")
+
+    return jsonify({
+        "success": True,
+        "redirect": url_for(f"dashboard_{user['role']}")
+    })
+
+
+@app.route("/api/check-status")
+def api_check_status():
+    email = request.args.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"found": False, "status": "unknown"})
+    user = db.find_user_by_email(email)
+    if not user:
+        return jsonify({"found": False, "status": "not_found"})
+    return jsonify({
+        "found": True,
+        "status": user.get("status", "pending"),
+        "role": user.get("role", "student"),
+        "active": user.get("active", 1)
+    })
+
+
+# ═══════════════════════════════════════════════════════════════
+# TEACHER PANEL — Page Routes
+# ═══════════════════════════════════════════════════════════════
+
+@app.route("/dashboard/teacher")
+@login_required
+@role_required("teacher")
+def dashboard_teacher():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+    teacher_id = user["id"]
+    tests = db.get_teacher_tests(teacher_id)
+    # Stats
+    total = len(tests)
+    published = sum(1 for t in tests if t.get("status") == "published")
+    drafts = sum(1 for t in tests if t.get("status") == "draft")
+    questions_total = sum(int(t.get("question_count") or 0) for t in tests)
+    # Students assigned (distinct, across all tests)
+    all_students = db.get_all_users(role_filter="student", status_filter="approved")
+    assigned_ids = set()
+    for t in tests:
+        for s in db.get_test_students(t["id"]):
+            assigned_ids.add(s["id"])
+    stats = {
+        "total_tests": total,
+        "published_tests": published,
+        "drafts": drafts,
+        "students_assigned": len(assigned_ids),
+        "questions_created": questions_total,
+        "submissions": 0,
+        "awaiting_review": 0,
+        "avg_score": None,
+        "flagged_sessions": 0,
+    }
+    recent_tests = tests[:5]
+    open_tests = [t for t in tests if t.get("status") == "published"]
+    return render_template("dashboard_teacher.html", user=user, stats=stats,
+                           tests=recent_tests, open_tests=open_tests, active_nav="dashboard")
+
+
+@app.route("/teacher/tests")
+@login_required
+@role_required("teacher")
+def teacher_tests():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    status_filter = request.args.get("status", "all")
+    search = request.args.get("q", "").strip()
+    tests = db.get_teacher_tests(user["id"])
+    # Filter
+    if status_filter != "all":
+        tests = [t for t in tests if t.get("status") == status_filter]
+    if search:
+        sl = search.lower()
+        tests = [t for t in tests if sl in (t.get("title") or "").lower() or sl in (t.get("subject") or "").lower()]
+    return render_template("teacher_test_list.html", user=user, tests=tests,
+                           status_filter=status_filter, search=search, active_nav="tests")
+
+
+@app.route("/teacher/tests/new")
+@login_required
+@role_required("teacher")
+def teacher_create_test():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    return render_template("teacher_create_test.html", user=user, active_nav="create")
+
+
+@app.route("/teacher/tests/<int:test_id>")
+@login_required
+@role_required("teacher")
+def teacher_test_detail(test_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    test = db.get_teacher_test(test_id, teacher_id=user["id"])
+    if not test:
+        flash("Test not found or access denied.", "error")
+        return redirect(url_for("teacher_tests"))
+    tab = request.args.get("tab", "questions")
+    questions = db.get_test_questions(test_id)
+    students_assigned = db.get_test_students(test_id)
+    all_students = db.get_all_users(role_filter="student", status_filter="approved")
+    assigned_ids = {s["id"] for s in students_assigned}
+    available_students = [s for s in all_students if s["id"] not in assigned_ids]
+    return render_template("teacher_test_detail.html", user=user, test=test,
+                           tab=tab, questions=questions,
+                           students_assigned=students_assigned,
+                           available_students=available_students,
+                           assigned_count=len(students_assigned),
+                           active_nav="tests")
+
+
+@app.route("/teacher/students")
+@login_required
+@role_required("teacher")
+def teacher_students():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    search = request.args.get("q", "").strip()
+    students = db.get_all_users(role_filter="student", status_filter="approved")
+    if search:
+        sl = search.lower()
+        students = [s for s in students if sl in (s.get("first_name","") + " " + s.get("last_name","")).lower()
+                    or sl in (s.get("email") or "").lower()
+                    or sl in (s.get("roll_number") or "").lower()
+                    or sl in (s.get("class_name") or "").lower()]
+    return render_template("teacher_students.html", user=user, students=students,
+                           search=search, active_nav="students")
+
+
+# ═══════════════════════════════════════════════════════════════
+# TEACHER PANEL — API Routes
+# ═══════════════════════════════════════════════════════════════
+
+@app.route("/api/teacher/tests", methods=["GET", "POST"])
+@login_required
+@role_required("teacher")
+def api_teacher_tests():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    if request.method == "GET":
+        tests = db.get_teacher_tests(user["id"])
+        return jsonify({"tests": [dict(t) for t in tests]})
+    # POST — create
+    data = request.get_json(force=True, silent=True) or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"success": False, "error": "Title is required"}), 400
+    try:
+        new_id = db.create_teacher_test(
+            teacher_id=user["id"],
+            title=title,
+            subject=data.get("subject", ""),
+            topic=data.get("topic", ""),
+            description=data.get("description", ""),
+            duration_minutes=int(data.get("duration_minutes", 30)),
+            instructions=data.get("instructions", ""),
+            difficulty=data.get("difficulty", "medium"),
+            max_tab_switches=int(data.get("max_tab_switches", 3)),
+            opens_at=data.get("opens_at") or None,
+            closes_at=data.get("closes_at") or None,
+            ai_proctoring=int(data.get("ai_proctoring", 1)),
+            negative_marking=int(data.get("negative_marking", 0)),
+            shuffle_questions=int(data.get("shuffle_questions", 1)),
+            shuffle_options=int(data.get("shuffle_options", 1)),
+        )
+        return jsonify({"success": True, "test_id": new_id})
+    except Exception as e:
+        app.logger.error("Create teacher test error: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/teacher/tests/<int:test_id>", methods=["GET", "PUT", "DELETE"])
+@login_required
+@role_required("teacher")
+def api_teacher_test(test_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    test = db.get_teacher_test(test_id, teacher_id=user["id"])
+    if not test:
+        return jsonify({"error": "Not found"}), 404
+    if request.method == "GET":
+        questions = db.get_test_questions(test_id)
+        return jsonify({"test": dict(test), "questions": questions})
+    if request.method == "DELETE":
+        db.delete_teacher_test(test_id)
+        return jsonify({"success": True})
+    # PUT
+    data = request.get_json(force=True, silent=True) or {}
+    allowed = ["title", "subject", "topic", "description", "duration_minutes",
+               "instructions", "difficulty", "max_tab_switches", "opens_at",
+               "closes_at", "ai_proctoring", "negative_marking",
+               "shuffle_questions", "shuffle_options", "status"]
+    updates = {k: data[k] for k in allowed if k in data}
+    if updates:
+        db.update_teacher_test(test_id, **updates)
+    return jsonify({"success": True})
+
+
+@app.route("/api/teacher/tests/<int:test_id>/publish", methods=["POST"])
+@login_required
+@role_required("teacher")
+def api_teacher_publish(test_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    test = db.get_teacher_test(test_id, teacher_id=user["id"])
+    if not test:
+        return jsonify({"error": "Not found"}), 404
+    db.update_teacher_test(test_id, status="published")
+    return jsonify({"success": True})
+
+
+@app.route("/api/teacher/tests/<int:test_id>/questions", methods=["GET", "POST"])
+@login_required
+@role_required("teacher")
+def api_teacher_questions(test_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    test = db.get_teacher_test(test_id, teacher_id=user["id"])
+    if not test:
+        return jsonify({"error": "Not found"}), 404
+    if request.method == "GET":
+        questions = db.get_test_questions(test_id)
+        return jsonify({"questions": questions})
+    # POST — add question
+    data = request.get_json(force=True, silent=True) or {}
+    q_text = (data.get("question_text") or "").strip()
+    if not q_text:
+        return jsonify({"success": False, "error": "question_text required"}), 400
+    try:
+        new_id, total_marks = db.add_test_question(
+            test_id=test_id,
+            question_text=q_text,
+            question_type=data.get("question_type", "mcq"),
+            difficulty=data.get("difficulty", "medium"),
+            marks=int(data.get("marks", 1)),
+            negative_marks=int(data.get("negative_marks", 0)),
+            options_json=data.get("options_json"),
+            correct_answer=data.get("correct_answer"),
+            correct_answers_json=data.get("correct_answers_json"),
+            expected_answer=data.get("expected_answer"),
+            explanation=data.get("explanation", ""),
+            position=int(data.get("position", 0)),
+        )
+        return jsonify({"success": True, "question_id": new_id, "total_marks": total_marks})
+    except Exception as e:
+        app.logger.error("Add question error: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/teacher/tests/<int:test_id>/questions/<int:q_id>",
+           methods=["PUT", "DELETE"])
+@login_required
+@role_required("teacher")
+def api_teacher_question(test_id, q_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    test = db.get_teacher_test(test_id, teacher_id=user["id"])
+    if not test:
+        return jsonify({"error": "Not found"}), 404
+    if request.method == "DELETE":
+        db.delete_test_question(q_id)
+        questions = db.get_test_questions(test_id)
+        total = sum(int(q.get("marks") or 0) for q in questions)
+        return jsonify({"success": True, "total_marks": total})
+    data = request.get_json(force=True, silent=True) or {}
+    db.update_test_question(q_id, **data)
+    return jsonify({"success": True})
+
+
+@app.route("/api/teacher/tests/<int:test_id>/students", methods=["GET", "POST", "DELETE"])
+@login_required
+@role_required("teacher")
+def api_teacher_test_students(test_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    test = db.get_teacher_test(test_id, teacher_id=user["id"])
+    if not test:
+        return jsonify({"error": "Not found"}), 404
+    if request.method == "GET":
+        students = db.get_test_students(test_id)
+        return jsonify({"students": students})
+    if request.method == "POST":
+        data = request.get_json(force=True, silent=True) or {}
+        student_ids = data.get("student_ids", [])
+        if not isinstance(student_ids, list):
+            student_ids = [student_ids]
+        added = 0
+        for sid in student_ids:
+            try:
+                db.assign_student_to_test(test_id, int(sid))
+                added += 1
+            except Exception:
+                pass
+        students = db.get_test_students(test_id)
+        return jsonify({"success": True, "added": added, "total": len(students)})
+    # DELETE
+    data = request.get_json(force=True, silent=True) or {}
+    student_ids = data.get("student_ids", [])
+    for sid in student_ids:
+        try:
+            db.remove_student_from_test(test_id, int(sid))
+        except Exception:
+            pass
+    students = db.get_test_students(test_id)
+    return jsonify({"success": True, "total": len(students)})
+
+
+@app.route("/api/teacher/students")
+@login_required
+@role_required("teacher")
+def api_teacher_students():
+    search = request.args.get("q", "").strip()
+    students = db.get_all_users(role_filter="student", status_filter="approved")
+    if search:
+        sl = search.lower()
+        students = [s for s in students if
+                    sl in (s.get("first_name", "") + " " + s.get("last_name", "")).lower()
+                    or sl in (s.get("email") or "").lower()
+                    or sl in (s.get("roll_number") or "").lower()]
+    result = []
+    for s in students:
+        result.append({
+            "id": s["id"],
+            "name": f"{s.get('first_name','')} {s.get('last_name','')}".strip(),
+            "email": s.get("email", ""),
+            "roll_number": s.get("roll_number", ""),
+            "class_name": s.get("class_name", ""),
+            "institute": s.get("institute", ""),
+            "initials": (s.get("first_name", "?")[:1] + s.get("last_name", "?")[:1]).upper()
+        })
+    return jsonify({"students": result})
+
+
+@app.route("/api/teacher/generate-questions", methods=["POST"])
+@login_required
+@role_required("teacher")
+def api_teacher_generate_questions():
+    """AI question generation for teacher — uses OpenAI with Gemini fallback."""
+    data = request.get_json(force=True, silent=True) or {}
+    topic = (data.get("topic") or "General Knowledge").strip()
+    difficulty = data.get("difficulty", "medium").capitalize()
+    mcq_count = max(0, int(data.get("mcq_count", 5)))
+    multi_count = max(0, int(data.get("multi_count", 0)))
+    short_count = max(0, int(data.get("short_count", 0)))
+    long_count = max(0, int(data.get("long_count", 0)))
+    extra = (data.get("extra_instructions") or "").strip()
+
+    total_count = mcq_count + multi_count + short_count + long_count
+    if total_count == 0:
+        return jsonify({"success": False, "error": "Select at least 1 question type count"}), 400
+    if total_count > 20:
+        return jsonify({"success": False, "error": "Maximum 20 questions per generation"}), 400
+
+    type_desc_parts = []
+    if mcq_count:
+        type_desc_parts.append(f"{mcq_count} multiple-choice (MCQ) questions with 4 options A/B/C/D and one correct answer")
+    if multi_count:
+        type_desc_parts.append(f"{multi_count} multi-select questions with 4 options and multiple correct answers")
+    if short_count:
+        type_desc_parts.append(f"{short_count} short-answer questions")
+    if long_count:
+        type_desc_parts.append(f"{long_count} long-answer questions")
+    types_str = "; ".join(type_desc_parts)
+
+    prompt_text = f"""Generate exactly {total_count} exam questions on the topic "{topic}" at {difficulty} difficulty.
+
+Generate: {types_str}.
+{f"Extra instructions: {extra}" if extra else ""}
+
+Return ONLY a valid JSON array. Each element must be an object with these fields:
+- "question_text": string
+- "question_type": one of "mcq", "multi_select", "short_answer", "long_answer"
+- "difficulty": "{difficulty.lower()}"
+- "marks": integer (1 for mcq/multi, 2 for short, 4 for long)
+- "options": array of {{"id": "A", "text": "..."}} objects (only for mcq and multi_select; omit for short/long)
+- "correct_answer": string like "A", "B", "C", or "D" (mcq only; null for others)
+- "correct_answers": array like ["A","C"] (multi_select only; null for others)
+- "expected_answer": string with model answer (short_answer and long_answer; null for mcq/multi)
+- "explanation": string explaining the correct answer
+
+No markdown, no text outside the JSON array."""
+
+    questions = []
+    error_msg = None
+
+    # Try OpenAI first
+    try:
+        llm = get_llm("openai")
+        from langchain_core.messages import HumanMessage
+        resp = llm.invoke([HumanMessage(content=prompt_text)])
+        raw = resp.content if hasattr(resp, "content") else str(resp)
+        # Extract JSON
+        import re as _re
+        json_match = _re.search(r'\[[\s\S]*\]', raw)
+        if json_match:
+            questions = json.loads(json_match.group())
+        else:
+            questions = json.loads(raw.strip())
+    except Exception as e1:
+        app.logger.warning("OpenAI teacher gen failed: %s, trying Gemini", e1)
+        try:
+            llm = get_llm("gemini")
+            from langchain_core.messages import HumanMessage
+            resp = llm.invoke([HumanMessage(content=prompt_text)])
+            raw = resp.content if hasattr(resp, "content") else str(resp)
+            import re as _re
+            json_match = _re.search(r'\[[\s\S]*\]', raw)
+            if json_match:
+                questions = json.loads(json_match.group())
+            else:
+                questions = json.loads(raw.strip())
+        except Exception as e2:
+            error_msg = f"AI generation failed: {e2}"
+            app.logger.error("Gemini teacher gen also failed: %s", e2)
+
+    if error_msg:
+        return jsonify({"success": False, "error": error_msg}), 500
+
+    # Normalize
+    normalized = []
+    for q in questions:
+        nq = {
+            "question_text": q.get("question_text", q.get("question", "")),
+            "question_type": q.get("question_type", "mcq"),
+            "difficulty": q.get("difficulty", difficulty.lower()),
+            "marks": int(q.get("marks", 1)),
+            "options": q.get("options", []),
+            "correct_answer": q.get("correct_answer"),
+            "correct_answers": q.get("correct_answers"),
+            "expected_answer": q.get("expected_answer"),
+            "explanation": q.get("explanation", ""),
+        }
+        normalized.append(nq)
+
+    return jsonify({"success": True, "questions": normalized, "total": len(normalized)})
+
+
+# ═══════════════════════════════════════════════════════════════
+# STUDENT PANEL — PAGE ROUTES
+# ═══════════════════════════════════════════════════════════════
+
+@app.route("/dashboard/student")
+@login_required
+@role_required("student")
+def dashboard_student():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        session.clear()
+        return redirect(url_for("login"))
+    tests = db.get_assigned_tests_for_student(user["id"])
+    history = db.get_student_practice_history(user["id"], limit=5)
+    return render_template("dashboard_student.html", user=user,
+                           tests=tests, history=history, active_nav="dashboard")
+
+
+@app.route("/student/practice")
+@login_required
+@role_required("student")
+def student_practice():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    history = db.get_student_practice_history(user["id"], limit=20)
+    return render_template("student_practice.html", user=user,
+                           history=history, active_nav="practice")
+
+
+@app.route("/student/practice/<int:session_id>/take")
+@login_required
+@role_required("student")
+def student_take_test(session_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    sess = db.get_practice_session(session_id, student_id=user["id"])
+    if not sess:
+        flash("Practice session not found.", "error")
+        return redirect(url_for("student_practice"))
+    questions = sess.get("questions_parsed", [])
+    return render_template("student_take_test.html", user=user,
+                           session_data=sess, questions=questions)
+
+
+@app.route("/student/practice/<int:session_id>/result")
+@login_required
+@role_required("student")
+def student_result(session_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    sess = db.get_practice_session(session_id, student_id=user["id"])
+    if not sess:
+        flash("Session not found.", "error")
+        return redirect(url_for("student_practice"))
+    return render_template("student_result.html", user=user,
+                           session_data=sess, active_nav="results")
+
+
+@app.route("/student/results")
+@login_required
+@role_required("student")
+def student_results():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    history = db.get_student_practice_history(user["id"], limit=50)
+    return render_template("student_results_list.html", user=user,
+                           history=history, active_nav="results")
+
+
+@app.route("/student/my-tests")
+@login_required
+@role_required("student")
+def student_my_tests():
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return redirect(url_for("login"))
+    tests = db.get_assigned_tests_for_student(user["id"])
+    return render_template("student_my_tests.html", user=user,
+                           tests=tests, active_nav="tests")
+
+
+# ═══════════════════════════════════════════════════════════════
+# STUDENT PANEL — API ROUTES
+# ═══════════════════════════════════════════════════════════════
+
+@app.route("/api/student/generate-practice", methods=["POST"])
+@login_required
+@role_required("student")
+def api_student_generate_practice():
+    """Generate an AI practice session for student."""
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    data = request.get_json(force=True, silent=True) or {}
+    topic = (data.get("topic") or "").strip()
+    subject = (data.get("subject") or topic).strip()
+    if not topic:
+        return jsonify({"success": False, "error": "Topic is required"}), 400
+
+    difficulty = data.get("difficulty", "medium").capitalize()
+    mcq_count = max(0, int(data.get("mcq_count", 5)))
+    multi_count = max(0, int(data.get("multi_count", 0)))
+    short_count = max(0, int(data.get("short_count", 0)))
+    long_count = max(0, int(data.get("long_count", 0)))
+    timed = bool(data.get("timed", False))
+    duration_minutes = int(data.get("duration_minutes", 0))
+
+    total = mcq_count + multi_count + short_count + long_count
+    if total == 0:
+        return jsonify({"success": False, "error": "Select at least 1 question"}), 400
+    if total > 20:
+        return jsonify({"success": False, "error": "Max 20 questions per session"}), 400
+
+    # Build prompt
+    type_parts = []
+    if mcq_count:
+        type_parts.append(f"{mcq_count} multiple-choice (type: 'mcq') with 4 options A/B/C/D")
+    if multi_count:
+        type_parts.append(f"{multi_count} multi-select (type: 'multi_select') with multiple correct answers")
+    if short_count:
+        type_parts.append(f"{short_count} short-answer (type: 'short_answer')")
+    if long_count:
+        type_parts.append(f"{long_count} long-answer (type: 'long_answer')")
+
+    prompt = f"""Generate exactly {total} exam questions on "{topic}" at {difficulty} difficulty level.
+Generate: {'; '.join(type_parts)}.
+
+Return ONLY a valid JSON array with no extra text. Each element must have:
+{{
+  "question_text": "<string>",
+  "question_type": "mcq" | "multi_select" | "short_answer" | "long_answer",
+  "difficulty": "{difficulty.lower()}",
+  "marks": <integer>,
+  "options": [{{"id":"A","text":"..."}}, ...] (for mcq/multi_select only, else []),
+  "correct_answer": "A"|"B"|"C"|"D" (for mcq only, else null),
+  "correct_answers": ["A","C"] (for multi_select only, else null),
+  "expected_answer": "<string>" (for short_answer/long_answer, else null),
+  "explanation": "<string>"
+}}"""
+
+    questions = []
+    error_msg = None
+    try:
+        llm = get_llm("openai")
+        from langchain_core.messages import HumanMessage
+        resp = llm.invoke([HumanMessage(content=prompt)])
+        raw = resp.content if hasattr(resp, "content") else str(resp)
+        import re as _re
+        m = _re.search(r'\[[\s\S]*\]', raw)
+        questions = json.loads(m.group() if m else raw.strip())
+    except Exception as e1:
+        app.logger.warning("OpenAI student gen failed: %s, trying Gemini", e1)
+        try:
+            llm = get_llm("gemini")
+            from langchain_core.messages import HumanMessage
+            resp = llm.invoke([HumanMessage(content=prompt)])
+            raw = resp.content if hasattr(resp, "content") else str(resp)
+            import re as _re
+            m = _re.search(r'\[[\s\S]*\]', raw)
+            questions = json.loads(m.group() if m else raw.strip())
+        except Exception as e2:
+            error_msg = str(e2)
+            app.logger.error("Gemini student gen also failed: %s", e2)
+
+    if error_msg:
+        return jsonify({"success": False, "error": error_msg}), 500
+
+    # Normalize questions
+    normalized = []
+    for q in questions:
+        opts = q.get("options", [])
+        nq = {
+            "question_text": q.get("question_text", q.get("question", "")),
+            "question_type": q.get("question_type", "mcq"),
+            "difficulty": q.get("difficulty", difficulty.lower()),
+            "marks": int(q.get("marks", 1)),
+            "options_parsed": opts,
+            "options_json": json.dumps(opts, ensure_ascii=False),
+            "correct_answer": q.get("correct_answer"),
+            "correct_answers": q.get("correct_answers"),
+            "expected_answer": q.get("expected_answer"),
+            "explanation": q.get("explanation", ""),
+        }
+        normalized.append(nq)
+
+    session_id = db.create_practice_session(
+        student_id=user["id"],
+        subject=subject,
+        topic=topic,
+        difficulty=difficulty.lower(),
+        questions=normalized,
+        timed=1 if timed else 0,
+        duration_minutes=duration_minutes,
+    )
+    return jsonify({"success": True, "session_id": session_id})
+
+
+@app.route("/api/student/practice/<int:session_id>/submit", methods=["POST"])
+@login_required
+@role_required("student")
+def api_student_submit_practice(session_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    sess = db.get_practice_session(session_id, student_id=user["id"])
+    if not sess:
+        return jsonify({"error": "Session not found"}), 404
+
+    data = request.get_json(force=True, silent=True) or {}
+    answers = data.get("answers", {})
+    time_taken = data.get("time_taken_secs")
+    questions = sess.get("questions_parsed", [])
+
+    score = 0.0
+    correct = wrong = skipped = 0
+    for i, q in enumerate(questions):
+        idx = str(i)
+        user_ans = answers.get(idx)
+        qtype = q.get("question_type", "mcq")
+        marks = int(q.get("marks", 1))
+
+        if qtype in ("mcq", "multiple_choice"):
+            if not user_ans:
+                skipped += 1
+            elif user_ans == q.get("correct_answer"):
+                score += marks
+                correct += 1
+            else:
+                wrong += 1
+        elif qtype == "multi_select":
+            if not user_ans:
+                skipped += 1
+            else:
+                ca = set(q.get("correct_answers") or [])
+                ua = set(user_ans if isinstance(user_ans, list) else [user_ans])
+                if ca and ca == ua:
+                    score += marks
+                    correct += 1
+                else:
+                    wrong += 1
+        else:  # short_answer / long_answer
+            if not user_ans or (isinstance(user_ans, str) and not user_ans.strip()):
+                skipped += 1
+            else:
+                score += marks * 0.5  # partial credit for written
+                correct += 1
+
+    db.save_practice_answers(session_id, answers, score, correct, wrong, skipped, time_taken)
+    return jsonify({
+        "success": True,
+        "score": score,
+        "correct": correct,
+        "wrong": wrong,
+        "skipped": skipped,
+    })
+
+
+@app.route("/api/student/practice/<int:session_id>", methods=["DELETE"])
+@login_required
+@role_required("student")
+def api_student_delete_practice(session_id):
+    user = db.find_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"error": "Not authenticated"}), 401
+    db.delete_practice_session(session_id, user["id"])
+    return jsonify({"success": True})
+
+
 # ═══════════════════════════════════════════════════════════════
 # SERVER
 # ═══════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    # Initialize database tables (no demo data by default)
-    db.init_db(seed_demo_data=False)
+    # Initialize database tables and seed demo accounts if missing
+    db.init_db(seed_demo_data=True)
     port = int(os.getenv("PORT", "5003"))
     print(f"\n{'='*60}")
     print(f"🚀 ExamAI Unified Platform Starting")

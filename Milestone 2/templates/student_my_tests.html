@@ -1,0 +1,47 @@
+{% extends "student_base.html" %}
+{% block title %}My Tests — ExamAI{% endblock %}
+{% block content %}
+<div class="s-page-label">LEARNING</div>
+<h1 class="s-page-title">My Tests</h1>
+<p class="s-page-sub">Tests assigned to you by your teachers.</p>
+
+{% if tests %}
+<div class="s-mytests-grid">
+  {% for test in tests %}
+  <div class="s-mytest-card">
+    <div class="s-mytest-card-top">
+      <span class="s-mytest-subject">{{ (test.subject or test.title)|upper }}</span>
+      <span class="s-mytest-status-badge s-mtstatus-{{ test.status }}">● {{ test.status|title }}</span>
+    </div>
+    <div class="s-mytest-title">{{ test.title }}</div>
+    <div class="s-mytest-topic">{{ test.topic or test.description or '' }}</div>
+    <div class="s-mytest-stats">
+      <span>📋 {{ test.question_count or 0 }} Q</span>
+      <span>·</span>
+      <span>★ {{ test.total_marks or 0 }} marks</span>
+      <span>·</span>
+      <span>⏱ {{ test.duration_minutes or 30 }} min</span>
+    </div>
+    <div class="s-mytest-footer">
+      {% if test.closes_at %}
+      <span class="s-mytest-deadline">Closes {{ test.closes_at | format_date }}</span>
+      {% else %}
+      <span class="s-mytest-deadline">No deadline</span>
+      {% endif %}
+      <a href="#" class="s-mytest-start-btn">Start test →</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="s-empty-state-page">
+  <div style="font-size:3rem;margin-bottom:1rem;">📋</div>
+  <h3>No tests assigned yet</h3>
+  <p>Your teacher hasn't assigned any tests to you yet.<br/>In the meantime, try some AI practice!</p>
+  <a href="{{ url_for('student_practice') }}" class="s-generate-btn" style="margin-top:1rem;display:inline-flex;">
+    Start practising →
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+

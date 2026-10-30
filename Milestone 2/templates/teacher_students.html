@@ -1,0 +1,52 @@
+{% extends "teacher_base.html" %}
+{% block title %}Students — ExamAI Teacher{% endblock %}
+
+{% block breadcrumb %}
+  <div class="t-breadcrumb"><span class="t-bc-label">ASSESSMENTS</span></div>
+{% endblock %}
+
+{% block content %}
+<div class="t-page-header">
+  <div>
+    <h1 class="t-page-title">Students</h1>
+    <p class="t-page-sub">Approved students you can assign tests to.</p>
+  </div>
+</div>
+
+<form method="GET" action="{{ url_for('teacher_students') }}" class="t-search-form" style="margin-bottom:1.5rem;">
+  <div class="t-search-box t-search-box-wide">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" name="q" value="{{ search }}" placeholder="Search by name, email, roll no or class..."
+           class="t-search-input" />
+  </div>
+</form>
+
+{% set avatar_colors = ['#059669','#0891b2','#7c3aed','#dc2626','#d97706','#0284c7'] %}
+
+{% if students %}
+<div class="t-students-grid">
+  {% for s in students %}
+  {% set color = avatar_colors[loop.index0 % avatar_colors|length] %}
+  <div class="t-student-card">
+    <div class="t-student-avatar" style="background: {{ color }};">
+      {{ s.first_name[:1]|upper }}{{ s.last_name[:1]|upper }}
+    </div>
+    <div class="t-student-info">
+      <div class="t-student-name">{{ s.first_name }} {{ s.last_name }}</div>
+      <div class="t-student-email">{{ s.email }}</div>
+      <div class="t-student-details">
+        {{ s.roll_number or '' }}{% if s.roll_number and s.class_name %} · {% endif %}{{ s.class_name or '' }}{% if s.institute %} · {{ s.institute }}{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="t-empty-page">
+  <div class="t-empty-icon-lg">👥</div>
+  <h3>No students found</h3>
+  <p>{% if search %}No students match "{{ search }}".{% else %}No approved students yet.{% endif %}</p>
+</div>
+{% endif %}
+{% endblock %}
+

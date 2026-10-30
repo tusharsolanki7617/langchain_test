@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}ExamAI — Student{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/student.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body class="s-body">
+<div class="s-layout">
+  <!-- Sidebar -->
+  <aside class="s-sidebar">
+    <div class="s-sidebar-top">
+      <a href="{{ url_for('dashboard_student') }}" class="s-brand">
+        <div class="s-brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <span class="s-brand-text">ExamAI</span>
+      </a>
+
+      <div class="s-nav-label">OVERVIEW</div>
+      <nav class="s-nav">
+        <a href="{{ url_for('dashboard_student') }}"
+           class="s-nav-item {% if active_nav == 'dashboard' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </a>
+      </nav>
+
+      <div class="s-nav-label">LEARNING</div>
+      <nav class="s-nav">
+        <a href="{{ url_for('student_my_tests') }}"
+           class="s-nav-item {% if active_nav == 'tests' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          My Tests
+        </a>
+        <a href="{{ url_for('student_practice') }}"
+           class="s-nav-item {% if active_nav == 'practice' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Practice
+        </a>
+        <a href="{{ url_for('student_results') }}"
+           class="s-nav-item {% if active_nav == 'results' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Results
+        </a>
+      </nav>
+    </div>
+
+    <div class="s-sidebar-footer">
+      <div class="s-portal-card">
+        <div class="s-portal-icon">{{ session.get('first_name','S')[:1] }}{{ session.get('last_name','')[:1] }}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="s-portal-title">{{ session.get('first_name','') }} {{ session.get('last_name','') }}</div>
+          <div class="s-portal-sub">Student</div>
+        </div>
+        <a href="{{ url_for('logout') }}" class="s-logout-btn" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="s-main-wrap">
+    <!-- Topbar -->
+    <header class="s-topbar">
+      <div></div>
+      <div class="s-topbar-right">
+        <button class="s-theme-btn" onclick="toggleTheme()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+        </button>
+        <div class="s-user-info">
+          <div class="s-topbar-avatar">{{ session.get('first_name','S')[:1] }}{{ session.get('last_name','S')[:1] }}</div>
+          <div>
+            <div class="s-topbar-name">{{ session.get('first_name','') }} {{ session.get('last_name','') }}</div>
+            <div class="s-topbar-role">Student</div>
+          </div>
+        </div>
+        <a href="{{ url_for('logout') }}" class="s-topbar-logout" title="Sign out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Logout</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Toast -->
+    <div id="s-toast-container"></div>
+
+    <!-- Content -->
+    <main class="s-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const t = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', t);
+  localStorage.setItem('theme', t);
+}
+(function() {
+  const t = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+})();
+
+function showToast(msg, type='info') {
+  const c = document.getElementById('s-toast-container');
+  if (!c) return;
+  const t = document.createElement('div');
+  t.className = `s-toast s-toast-${type}`;
+  t.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()">✕</button>`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300); }, 3500);
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
+

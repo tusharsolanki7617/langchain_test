@@ -1,0 +1,192 @@
+{% extends "student_base.html" %}
+{% block title %}{{ session_data.topic }} — Result | ExamAI{% endblock %}
+{% block content %}
+{% set pct = ((session_data.score or 0) / (session_data.total_marks or 1) * 100)|round|int %}
+{% set q_list = session_data.questions_parsed %}
+{% set a_map = session_data.answers_parsed or {} %}
+
+<!-- Result header banner -->
+<div class="s-result-banner">
+  <div class="s-result-banner-left">
+    <!-- Score circle -->
+    <div class="s-score-circle {% if pct >= 70 %}s-score-high{% elif pct >= 40 %}s-score-mid{% else %}s-score-low{% endif %}">
+      <div class="s-score-circle-inner">
+        <span class="s-score-pct">{{ pct }}%</span>
+        <span class="s-score-label">{% if pct >= 70 %}Good work{% elif pct >= 40 %}Keep going{% else %}Needs work{% endif %}</span>
+      </div>
+    </div>
+    <div class="s-result-info">
+      <div class="s-result-tags">
+        <span class="s-result-subject">{{ (session_data.subject or session_data.topic or 'GENERAL')|upper }}</span>
+        <span class="s-result-practice-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Practice
+        </span>
+      </div>
+      <h1 class="s-result-title">{{ session_data.topic or session_data.subject }} practice</h1>
+      <div class="s-result-meta">
+        Submitted {{ session_data.submitted_at | format_date if session_data.submitted_at else 'Just now' }}
+        {% if session_data.time_taken_secs %}
+        · <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        {{ (session_data.time_taken_secs // 60) }}m {{ (session_data.time_taken_secs % 60) }}s
+        {% endif %}
+      </div>
+      <div class="s-result-score-big">
+        {{ (session_data.score or 0)|round|int }} <span class="s-result-score-denom">/ {{ session_data.total_marks or 0 }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="s-result-banner-right">
+    <div class="s-result-stat s-rst-correct">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+      <span class="s-rst-val">{{ session_data.correct_count or 0 }}</span>
+      <span class="s-rst-label">Correct</span>
+    </div>
+    <div class="s-result-stat s-rst-wrong">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      <span class="s-rst-val">{{ session_data.wrong_count or 0 }}</span>
+      <span class="s-rst-label">Wrong</span>
+    </div>
+    <div class="s-result-stat s-rst-skipped">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span class="s-rst-val">{{ session_data.skipped_count or 0 }}</span>
+      <span class="s-rst-label">Skipped</span>
+    </div>
+  </div>
+</div>
+
+<!-- Body: breakdown + right panel -->
+<div class="s-result-body">
+  <div class="s-result-main">
+    <!-- Filter tabs -->
+    <div class="s-result-filter-row">
+      <h2 class="s-result-section-title">Question breakdown</h2>
+      <div class="s-result-filter-tabs">
+        <button class="s-result-tab active" onclick="filterQuestions('all', this)">All</button>
+        <button class="s-result-tab" onclick="filterQuestions('correct', this)">Correct</button>
+        <button class="s-result-tab" onclick="filterQuestions('wrong', this)">Lost marks</button>
+        <button class="s-result-tab" onclick="filterQuestions('skipped', this)">Skipped</button>
+      </div>
+    </div>
+
+    <!-- Question cards -->
+    <div class="s-result-q-list" id="result-q-list">
+      {% set evaluated = session_data.answers_parsed %}
+      {% for q in q_list %}
+      {% set qidx = loop.index0|string %}
+      {% set user_ans = evaluated[qidx] if evaluated and qidx in evaluated else None %}
+      {% set is_mcq = q.question_type in ['mcq','multiple_choice'] %}
+      {% set is_written = q.question_type in ['short_answer','long_answer'] %}
+      {% if is_mcq %}
+        {% set correct = (user_ans == q.correct_answer) %}
+        {% set status = 'correct' if correct else ('skipped' if not user_ans else 'wrong') %}
+      {% else %}
+        {% set status = 'skipped' if not user_ans else 'written' %}
+      {% endif %}
+
+      <div class="s-result-q-card" data-status="{{ status }}">
+        <div class="s-result-q-header">
+          <span class="s-result-q-num">{{ loop.index }}</span>
+          <span class="s-take-q-type-badge">{{ q.question_type|replace('_',' ')|title }}</span>
+          <span class="s-result-status-badge s-status-{{ status }}">
+            {% if status == 'correct' %}✓ Correct
+            {% elif status == 'wrong' %}✗ Incorrect
+            {% elif status == 'skipped' %}○ Not answered
+            {% else %}✎ Written{% endif %}
+          </span>
+          <span class="s-result-q-marks" style="margin-left:auto;">
+            {% if status == 'correct' %}{{ q.marks }}{% else %}0{% endif %} / {{ q.marks }}
+          </span>
+        </div>
+        <div class="s-result-q-text">{{ q.question_text }}</div>
+
+        {% if is_mcq and q.options_parsed %}
+        <div class="s-result-options">
+          {% for opt in q.options_parsed %}
+          <div class="s-result-opt
+            {% if opt.id == q.correct_answer %}s-result-opt-correct{% endif %}
+            {% if user_ans == opt.id and opt.id != q.correct_answer %}s-result-opt-wrong{% endif %}">
+            <span class="s-result-opt-letter">{{ opt.id }}</span>
+            <span class="s-result-opt-text">{{ opt.text }}</span>
+            {% if opt.id == q.correct_answer %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="13" height="13" style="margin-left:auto;color:#059669;"><polyline points="20 6 9 17 4 12"/></svg>
+            {% elif user_ans == opt.id %}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13" style="margin-left:auto;color:#dc2626;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% elif is_written %}
+        <div class="s-result-written-ans">
+          <div class="s-result-written-label">Your answer:</div>
+          <div class="s-result-written-text">{{ user_ans or '(No answer)' }}</div>
+          {% if q.expected_answer %}
+          <div class="s-result-written-label" style="margin-top:0.75rem;">Model answer:</div>
+          <div class="s-result-written-text s-result-model-ans">{{ q.expected_answer }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if q.explanation %}
+        <details class="s-result-explanation">
+          <summary>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            Explanation
+          </summary>
+          <div class="s-result-explanation-body">{{ q.explanation }}</div>
+        </details>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="s-result-side">
+    <div class="s-result-side-card">
+      <div class="s-result-side-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32" style="color:#7c3aed;"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      </div>
+      <p class="s-result-side-msg">Practice makes perfect. Try the same set again, or generate a new one.</p>
+      <a href="{{ url_for('student_take_test', session_id=session_data.id) }}" class="s-retake-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+        Retake this set
+      </a>
+      <a href="{{ url_for('student_practice') }}" class="s-newtest-link">New practice test</a>
+    </div>
+
+    <div class="s-result-side-card" style="margin-top:1rem;">
+      <div class="s-result-side-title">Score split</div>
+      <div class="s-score-split-row">
+        <span>Objective</span>
+        <span>{{ session_data.correct_count or 0 }}</span>
+      </div>
+      <div class="s-score-split-row">
+        <span>Written</span>
+        <span>0</span>
+      </div>
+      <div class="s-score-split-row s-score-split-total">
+        <span>Total</span>
+        <span>{{ (session_data.score or 0)|round|int }} / {{ session_data.total_marks or 0 }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterQuestions(type, btn) {
+  document.querySelectorAll('.s-result-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.s-result-q-card').forEach(card => {
+    const s = card.dataset.status;
+    if (type === 'all') card.style.display = '';
+    else if (type === 'correct') card.style.display = (s === 'correct') ? '' : 'none';
+    else if (type === 'wrong') card.style.display = (s === 'wrong') ? '' : 'none';
+    else if (type === 'skipped') card.style.display = (s === 'skipped') ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}
+

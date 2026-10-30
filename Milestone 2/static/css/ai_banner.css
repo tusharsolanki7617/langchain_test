@@ -1,0 +1,203 @@
+/* ==========================================
+   Student AI Feature Banner & Nav Highlights
+   ========================================== */
+
+/* AI Feature Banner */
+.student-ai-feature-banner {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: linear-gradient(135deg, #6c3ce1 0%, #9b59b6 50%, #7c3aed 100%);
+  border-radius: 20px;
+  padding: 2rem 2.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(108, 60, 225, 0.35);
+}
+
+.student-ai-feature-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.student-ai-feature-banner::after {
+  content: '';
+  position: absolute;
+  bottom: -60%;
+  right: 15%;
+  width: 280px;
+  height: 280px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ai-feature-left {
+  flex: 1;
+  z-index: 1;
+}
+
+.ai-feature-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.9rem;
+  border-radius: 50px;
+  margin-bottom: 0.9rem;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+.ai-feature-left h2 {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0 0 0.6rem 0;
+  line-height: 1.25;
+}
+
+.ai-feature-left p {
+  color: rgba(255,255,255,0.82);
+  font-size: 0.92rem;
+  margin: 0 0 1.3rem 0;
+  max-width: 420px;
+  line-height: 1.6;
+}
+
+.ai-feature-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-launch-studio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #fff;
+  color: #6c3ce1;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.65rem 1.4rem;
+  border-radius: 50px;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+
+.btn-launch-studio:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  color: #5a2cc4;
+}
+
+.btn-launch-ocr {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.65rem 1.4rem;
+  border-radius: 50px;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,0.3);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.btn-launch-ocr:hover {
+  background: rgba(255,255,255,0.25);
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+/* AI Topics Chip Grid on Right */
+.ai-feature-right {
+  flex-shrink: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-topics-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 220px;
+  justify-content: center;
+}
+
+.ai-topic-pill {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
+  border-radius: 50px;
+  border: 1px solid rgba(255,255,255,0.2);
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.ai-topic-pill:hover {
+  background: rgba(255,255,255,0.28);
+}
+
+/* Nav AI Tests highlight */
+.nav-link.nav-highlight,
+.nav-item .nav-highlight {
+  background: linear-gradient(90deg, rgba(108,60,225,0.12), rgba(108,60,225,0.04));
+  border-left: 3px solid #7c3aed;
+  color: #6c3ce1 !important;
+  font-weight: 700;
+}
+
+.nav-badge-glow {
+  display: inline-block;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.45rem;
+  border-radius: 50px;
+  margin-left: 0.4rem;
+  vertical-align: middle;
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(124,58,237,0.5); }
+  50% { opacity: 0.75; box-shadow: 0 0 12px rgba(124,58,237,0.8); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .student-ai-feature-banner {
+    flex-direction: column;
+    padding: 1.5rem;
+  }
+  .ai-feature-right {
+    width: 100%;
+  }
+  .ai-topics-chip-grid {
+    max-width: 100%;
+  }
+  .ai-feature-left h2 {
+    font-size: 1.25rem;
+  }
+}
+

@@ -1,0 +1,88 @@
+{% extends "teacher_base.html" %}
+{% block title %}Tests — ExamAI Teacher{% endblock %}
+
+{% block breadcrumb %}
+  <div class="t-breadcrumb"><span class="t-bc-label">ASSESSMENTS</span></div>
+{% endblock %}
+
+{% block content %}
+<div class="t-page-header">
+  <div>
+    <h1 class="t-page-title">Tests</h1>
+    <p class="t-page-sub">Create, assign and track your assessments.</p>
+  </div>
+  <a href="{{ url_for('teacher_create_test') }}" class="btn-t-primary">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    New test
+  </a>
+</div>
+
+<!-- Filter + Search row -->
+<div class="t-tests-controls">
+  <div class="t-filter-tabs">
+    <a href="{{ url_for('teacher_tests', status='all') }}" class="t-filter-tab {% if status_filter == 'all' %}active{% endif %}">All</a>
+    <a href="{{ url_for('teacher_tests', status='draft') }}" class="t-filter-tab {% if status_filter == 'draft' %}active{% endif %}">Drafts</a>
+    <a href="{{ url_for('teacher_tests', status='published') }}" class="t-filter-tab {% if status_filter == 'published' %}active{% endif %}">Published</a>
+    <a href="{{ url_for('teacher_tests', status='closed') }}" class="t-filter-tab {% if status_filter == 'closed' %}active{% endif %}">Closed</a>
+  </div>
+  <form method="GET" action="{{ url_for('teacher_tests') }}" class="t-search-form">
+    <input type="hidden" name="status" value="{{ status_filter }}" />
+    <div class="t-search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" name="q" value="{{ search }}" placeholder="Search tests..." class="t-search-input" />
+    </div>
+  </form>
+</div>
+
+{% if tests %}
+<div class="t-test-cards-grid">
+  {% for test in tests %}
+  <div class="t-test-card">
+    <div class="t-test-card-top">
+      <span class="t-test-subject-label">{{ (test.subject or test.title or 'TEST')|upper }}</span>
+      <span class="t-status-badge t-status-{{ test.status }}">
+        <span class="t-status-dot"></span>
+        {{ test.status|title }}
+      </span>
+    </div>
+    <a href="{{ url_for('teacher_test_detail', test_id=test.id) }}" class="t-test-card-title {% if test.status == 'published' %}t-title-green{% endif %}">
+      {{ test.title }}
+    </a>
+    <div class="t-test-card-topic">{{ test.topic or test.description or '—' }}</div>
+    <div class="t-test-card-stats">
+      <span>📋 {{ test.question_count or 0 }} Q</span>
+      <span>·</span>
+      <span>★ {{ test.total_marks or 0 }} marks</span>
+      <span>·</span>
+      <span>⏱ {{ test.duration_minutes or 30 }} min</span>
+      {% if test.ai_proctoring %}<span>·</span><span>📷 Proctored</span>{% endif %}
+    </div>
+    <div class="t-test-card-subs">
+      <span class="t-subs-count">👥 0/0 submitted</span>
+      <span class="t-subs-pct">0%</span>
+    </div>
+    <div class="t-test-card-footer">
+      <span class="t-test-date">
+        {% if test.closes_at %}
+          Closes {{ test.closes_at | format_date if test.closes_at else '' }}
+        {% else %}
+          No deadline
+        {% endif %}
+      </span>
+      <a href="{{ url_for('teacher_test_detail', test_id=test.id) }}" class="t-results-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Results
+      </a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="t-empty-page">
+  <div class="t-empty-icon-lg">📋</div>
+  <h3>No tests found</h3>
+  <p>{% if search %}No tests match "{{ search }}".{% else %}Create your first test to get started.{% endif %}</p>
+  <a href="{{ url_for('teacher_create_test') }}" class="btn-t-primary" style="margin-top:1rem;">+ Create test</a>
+</div>
+{% endif %}
+{% endblock %}

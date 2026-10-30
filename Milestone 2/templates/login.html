@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign In — ExamAI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f8f9fc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    /* ── Brand bar ── */
+    .lp-brand {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 1.25rem; font-weight: 800; color: #111827;
+      margin-bottom: 0.4rem;
+    }
+    .lp-brand-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg,#7c3aed,#4f46e5);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lp-brand-icon svg { color:#fff; }
+
+    /* ── Page wrapper ── */
+    .lp-wrap {
+      width: 100%; max-width: 960px;
+    }
+    .lp-header { text-align: center; margin-bottom: 2rem; }
+    .lp-header h1 { font-size: 2rem; font-weight: 800; color: #111827; margin-bottom: 0.4rem; }
+    .lp-header p { color: #6b7280; font-size: 0.95rem; }
+
+    /* ── 3 Portal cards ── */
+    .lp-portals {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 700px) { .lp-portals { grid-template-columns: 1fr; } }
+
+    .portal-card {
+      background: #fff;
+      border: 2px solid #e5e7eb;
+      border-radius: 20px;
+      padding: 2rem 1.5rem;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color .2s, box-shadow .2s, transform .15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .portal-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0,0,0,.1);
+    }
+    .portal-card.active {
+      border-color: var(--portal-color);
+      box-shadow: 0 0 0 4px rgba(var(--portal-rgb), .12);
+    }
+    .portal-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: var(--portal-color);
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .portal-card.active::before, .portal-card:hover::before { opacity: 1; }
+
+    .portal-card.student  { --portal-color:#7c3aed; --portal-rgb:124,58,237; }
+    .portal-card.teacher  { --portal-color:#059669; --portal-rgb:5,150,105; }
+    .portal-card.admin    { --portal-color:#d97706; --portal-rgb:217,119,6; }
+
+    .portal-icon {
+      width: 64px; height: 64px; border-radius: 16px;
+      margin: 0 auto 1rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+    }
+    .portal-card.student .portal-icon { background: #ede9fe; }
+    .portal-card.teacher .portal-icon { background: #d1fae5; }
+    .portal-card.admin   .portal-icon { background: #fef3c7; }
+
+    .portal-label {
+      font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; margin-bottom: .4rem;
+      color: var(--portal-color);
+    }
+    .portal-title { font-size: 1.1rem; font-weight: 800; color: #111827; margin-bottom: .4rem; }
+    .portal-desc  { font-size: .8rem; color: #6b7280; line-height: 1.5; }
+
+    .portal-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      margin-top: .75rem; font-size: .72rem; font-weight: 600;
+      color: var(--portal-color);
+      background: rgba(var(--portal-rgb), .1);
+      padding: 4px 10px; border-radius: 99px;
+    }
+
+    /* ── Login form box ── */
+    .lp-form-box {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 20px;
+      padding: 2rem;
+      max-width: 440px;
+      margin: 0 auto;
+      display: none;
+    }
+    .lp-form-box.visible { display: block; }
+
+    .lp-form-header {
+      display: flex; align-items: center; gap: .75rem;
+      margin-bottom: 1.5rem; padding-bottom: 1rem;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .lp-form-role-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    .role-student .lp-form-role-icon { background: #ede9fe; }
+    .role-teacher .lp-form-role-icon { background: #d1fae5; }
+    .role-admin   .lp-form-role-icon { background: #fef3c7; }
+    .lp-form-title { font-size: 1rem; font-weight: 700; color: #111827; }
+    .lp-form-sub   { font-size: .8rem; color: #6b7280; margin-top: 2px; }
+
+    .lp-back-btn {
+      margin-left: auto; font-size: .78rem; color: #6b7280;
+      background: none; border: none; cursor: pointer;
+      display: flex; align-items: center; gap: .25rem;
+      padding: 4px 8px; border-radius: 6px;
+    }
+    .lp-back-btn:hover { background: #f3f4f6; color: #374151; }
+
+    /* Quick demo bar */
+    .lp-demo-bar {
+      background: #f8f9fc;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: .75rem 1rem;
+      margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    }
+    .lp-demo-label { font-size: .72rem; font-weight: 600; color: #6b7280; white-space: nowrap; }
+    .lp-demo-pill {
+      font-size: .78rem; font-weight: 600;
+      padding: 5px 14px; border-radius: 99px;
+      border: none; cursor: pointer; transition: background .15s;
+      background: #fff; border: 1.5px solid #e5e7eb; color: #374151;
+    }
+    .lp-demo-pill:hover { border-color: var(--portal-color); color: var(--portal-color); }
+
+    .role-student .lp-demo-pill { --portal-color:#7c3aed; }
+    .role-teacher .lp-demo-pill { --portal-color:#059669; }
+    .role-admin   .lp-demo-pill { --portal-color:#d97706; }
+
+    .lp-demo-pill.primary {
+      background: var(--portal-color); color: #fff; border-color: var(--portal-color);
+    }
+
+    /* Form fields */
+    .lp-form-group { margin-bottom: 1rem; }
+    .lp-form-label {
+      display: block; font-size: .82rem; font-weight: 600;
+      color: #374151; margin-bottom: .4rem;
+    }
+    .lp-form-input {
+      width: 100%; padding: .6rem .85rem;
+      border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: .875rem; font-family: inherit; color: #111827;
+      background: #fff; outline: none; transition: border-color .15s;
+    }
+    .lp-form-input:focus { border-color: var(--portal-color); }
+    .role-student .lp-form-input:focus { border-color: #7c3aed; }
+    .role-teacher .lp-form-input:focus { border-color: #059669; }
+    .role-admin   .lp-form-input:focus { border-color: #d97706; }
+
+    .lp-submit {
+      width: 100%; padding: .7rem;
+      border: none; border-radius: 9px;
+      font-size: .9rem; font-weight: 700; cursor: pointer;
+      color: #fff; margin-top: .25rem;
+      transition: opacity .15s;
+    }
+    .lp-submit:hover { opacity: .9; }
+    .role-student .lp-submit { background: #7c3aed; }
+    .role-teacher .lp-submit { background: #059669; }
+    .role-admin   .lp-submit { background: #d97706; }
+
+    .lp-form-footer { text-align: center; margin-top: 1rem; font-size: .8rem; color: #6b7280; }
+    .lp-form-footer a { color: #7c3aed; font-weight: 600; text-decoration: none; }
+    .role-teacher .lp-form-footer a { color: #059669; }
+    .role-admin   .lp-form-footer a { color: #d97706; }
+
+    /* Flash messages */
+    .lp-flash { padding: .7rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: .85rem; font-weight: 500; }
+    .lp-flash.error { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+    .lp-flash.success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+
+    /* Divider */
+    .lp-divider { display: flex; align-items: center; gap: .75rem; margin: .75rem 0; }
+    .lp-divider::before, .lp-divider::after { content:''; flex:1; height:1px; background:#e5e7eb; }
+    .lp-divider span { font-size: .72rem; color: #9ca3af; white-space: nowrap; }
+
+    /* Footer note */
+    .lp-footer-note { text-align: center; margin-top: 2rem; color: #9ca3af; font-size: .78rem; }
+  </style>
+</head>
+<body>
+
+<div class="lp-wrap">
+  <!-- Brand -->
+  <div style="text-align:center;margin-bottom:2.5rem;">
+    <div class="lp-brand" style="justify-content:center;">
+      <div class="lp-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      ExamAI
+    </div>
+    <p style="color:#9ca3af;font-size:.85rem;margin-top:.3rem;">AI-powered examination platform</p>
+  </div>
+
+  <!-- Step 1: Pick a portal -->
+  <div id="step-portals">
+    <div class="lp-header">
+      <h1>Choose your portal</h1>
+      <p>Select the role that matches your account to sign in</p>
+    </div>
+
+    <div class="lp-portals">
+      <!-- Student -->
+      <div class="portal-card student" onclick="selectPortal('student')">
+        <div class="portal-icon">🎓</div>
+        <div class="portal-label">Student Portal</div>
+        <div class="portal-title">Learn & Practice</div>
+        <div class="portal-desc">Take AI-powered practice tests, view assigned tests from your teacher, and track your results.</div>
+        <div class="portal-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg>
+          Sign in as Student
+        </div>
+      </div>
+
+      <!-- Teacher -->
+      <div class="portal-card teacher" onclick="selectPortal('teacher')">
+        <div class="portal-icon">📚</div>
+        <div class="portal-label">Teacher Portal</div>
+        <div class="portal-title">Create & Assign</div>
+        <div class="portal-desc">Draft tests, generate questions with AI, assign students and track submissions and scores.</div>
+        <div class="portal-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg>
+          Sign in as Teacher
+        </div>
+      </div>
+
+      <!-- Admin -->
+      <div class="portal-card admin" onclick="selectPortal('admin')">
+        <div class="portal-icon">⚙️</div>
+        <div class="portal-label">Admin Console</div>
+        <div class="portal-title">Manage & Approve</div>
+        <div class="portal-desc">Approve signups, manage users, monitor platform activity and keep the platform running smoothly.</div>
+        <div class="portal-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><polyline points="9 18 15 12 9 6"/></svg>
+          Sign in as Admin
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Login form (shown after portal selected) -->
+  <div id="step-form">
+    <div class="lp-form-box" id="form-box">
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="lp-flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <div class="lp-form-header">
+        <div class="lp-form-role-icon" id="form-role-icon">🎓</div>
+        <div>
+          <div class="lp-form-title" id="form-role-title">Student Sign In</div>
+          <div class="lp-form-sub" id="form-role-sub">Access your student portal</div>
+        </div>
+        <button class="lp-back-btn" onclick="goBack()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="15 18 9 12 15 6"/></svg>
+          Back
+        </button>
+      </div>
+
+      <!-- 1-click demo login -->
+      <div class="lp-demo-bar">
+        <span class="lp-demo-label">⚡ Quick access</span>
+        <button class="lp-demo-pill primary" id="demo-quick-btn" onclick="quickDemoLogin()">
+          Sign in as <span id="demo-role-label">Student</span>
+        </button>
+      </div>
+
+      <div class="lp-divider"><span>or enter credentials</span></div>
+
+      <!-- Login form -->
+      <form method="POST" action="{{ url_for('login') }}" id="login-form">
+        <input type="hidden" name="role" id="role-input" value="{{ selected_role or 'student' }}"/>
+
+        <div class="lp-form-group">
+          <label class="lp-form-label">Email Address</label>
+          <input type="email" name="email" class="lp-form-input"
+                 placeholder="e.g. name@university.edu"
+                 value="{{ email or '' }}" required autocomplete="email"/>
+        </div>
+
+        <div class="lp-form-group">
+          <label class="lp-form-label">Password</label>
+          <input type="password" name="password" class="lp-form-input"
+                 placeholder="Enter your password" required autocomplete="current-password"/>
+        </div>
+
+        <button type="submit" class="lp-submit" id="submit-btn">
+          Sign In →
+        </button>
+      </form>
+
+      <div class="lp-form-footer">
+        Don't have an account?
+        <a href="{{ url_for('signup', role=selected_role or 'student') }}" id="signup-link">Create one free</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="lp-footer-note">
+    Demo credentials: student@edux.com / student123 &nbsp;·&nbsp; teacher@edux.com / teacher123 &nbsp;·&nbsp; admin@edux.com / admin123
+  </div>
+</div>
+
+<script>
+  const PORTAL_INFO = {
+    student: { icon:'🎓', title:'Student Sign In', sub:'Access your student portal', label:'Student', color:'#7c3aed' },
+    teacher: { icon:'📚', title:'Teacher Sign In', sub:'Access your teacher portal', label:'Teacher', color:'#059669' },
+    admin:   { icon:'⚙️', title:'Admin Sign In',   sub:'Access the admin console',  label:'Admin',   color:'#d97706' },
+  };
+  const DEMO_CREDS = {
+    student: { email:'student@edux.com', password:'student123' },
+    teacher: { email:'teacher@edux.com', password:'teacher123' },
+    admin:   { email:'admin@edux.com',   password:'admin123'   },
+  };
+
+  let activeRole = '{{ selected_role or "" }}';
+
+  function selectPortal(role) {
+    activeRole = role;
+    const info = PORTAL_INFO[role];
+
+    // Update form UI
+    document.getElementById('form-role-icon').textContent = info.icon;
+    document.getElementById('form-role-title').textContent = info.title;
+    document.getElementById('form-role-sub').textContent   = info.sub;
+    document.getElementById('demo-role-label').textContent = info.label;
+    document.getElementById('role-input').value = role;
+
+    // Update signup link
+    document.getElementById('signup-link').href = '/signup?role=' + role;
+
+    // Apply role theme class
+    const box = document.getElementById('form-box');
+    box.className = 'lp-form-box visible role-' + role;
+
+    // Hide portals, show form
+    document.getElementById('step-portals').style.display = 'none';
+    document.getElementById('step-form').style.display = 'block';
+    document.getElementById('form-box').style.display = 'block';
+
+    // Scroll to form
+    document.getElementById('step-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function goBack() {
+    document.getElementById('step-portals').style.display = 'block';
+    document.getElementById('step-form').style.display = 'none';
+    document.getElementById('form-box').style.display = 'none';
+    activeRole = '';
+  }
+
+  async function quickDemoLogin() {
+    if (!activeRole) return;
+    const btn = document.getElementById('demo-quick-btn');
+    btn.textContent = 'Signing in…';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/demo-login/' + activeRole, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success && data.redirect) {
+        window.location.href = data.redirect;
+      } else {
+        btn.textContent = 'Error — try credentials below';
+        btn.disabled = false;
+      }
+    } catch (e) {
+      btn.textContent = 'Error — try credentials below';
+      btn.disabled = false;
+    }
+  }
+
+  // Auto-open the form if server-side selected_role is set (e.g. after a failed login)
+  (function() {
+    const preRole = '{{ selected_role or "" }}';
+    if (preRole && PORTAL_INFO[preRole]) {
+      selectPortal(preRole);
+    }
+  })();
+</script>
+</body>
+</html>

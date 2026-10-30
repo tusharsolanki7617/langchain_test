@@ -1,0 +1,259 @@
+{% extends "student_base.html" %}
+{% block title %}Practice — ExamAI{% endblock %}
+{% block content %}
+<div class="s-two-col-layout">
+  <!-- Left: Practice form -->
+  <div class="s-main-col">
+    <div class="s-page-label">PRACTICE</div>
+    <h1 class="s-page-title">Practise anything, anytime</h1>
+    <p class="s-page-sub">Generate a fresh AI test on any topic. Practice tests are graded instantly and never shared with teachers.</p>
+
+    <div class="s-practice-card">
+      <div class="s-practice-card-header">
+        <div class="s-practice-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div>
+          <div class="s-practice-card-title">New practice test</div>
+          <div class="s-practice-card-sub">Powered by ChatGPT with Gemini as backup.</div>
+        </div>
+      </div>
+
+      <div class="s-form-row-2" style="margin-bottom:0.75rem;">
+        <div class="s-form-group">
+          <label class="s-form-label">Subject</label>
+          <input type="text" id="p-subject" class="s-form-input" placeholder="e.g. Physics" />
+        </div>
+        <div class="s-form-group">
+          <label class="s-form-label">Topic</label>
+          <input type="text" id="p-topic" class="s-form-input" placeholder="e.g. Kinematics" />
+        </div>
+      </div>
+
+      <!-- Quick topic chips -->
+      <div class="s-topic-chips">
+        <button class="s-chip" onclick="setTopic('Binary search trees')">Binary search trees</button>
+        <button class="s-chip" onclick="setTopic('Newton\'s laws of motion')">Newton's laws of motion</button>
+        <button class="s-chip" onclick="setTopic('Quadratic equations')">Quadratic equations</button>
+        <button class="s-chip" onclick="setTopic('Photosynthesis')">Photosynthesis</button>
+        <button class="s-chip" onclick="setTopic('Periodic table trends')">Periodic table trends</button>
+      </div>
+
+      <!-- Difficulty -->
+      <div class="s-form-group" style="margin-top:1rem;">
+        <label class="s-form-label">Difficulty</label>
+        <div class="s-difficulty-group">
+          <button class="s-diff-btn" id="diff-easy" onclick="setDiff('easy')">Easy</button>
+          <button class="s-diff-btn s-diff-active" id="diff-medium" onclick="setDiff('medium')">Medium</button>
+          <button class="s-diff-btn" id="diff-hard" onclick="setDiff('hard')">Hard</button>
+        </div>
+      </div>
+
+      <!-- Question counts -->
+      <div class="s-form-group">
+        <label class="s-form-label">Questions (<span id="total-q-count">8</span>)</label>
+        <div class="s-qty-grid">
+          <div class="s-qty-row">
+            <span class="s-qty-label">Multiple choice</span>
+            <div class="s-qty-ctrl">
+              <button type="button" onclick="changeQty('mcq',-1)">−</button>
+              <span id="q-mcq">5</span>
+              <button type="button" onclick="changeQty('mcq',1)">+</button>
+            </div>
+          </div>
+          <div class="s-qty-row">
+            <span class="s-qty-label">Multi-select</span>
+            <div class="s-qty-ctrl">
+              <button type="button" onclick="changeQty('multi',-1)">−</button>
+              <span id="q-multi">2</span>
+              <button type="button" onclick="changeQty('multi',1)">+</button>
+            </div>
+          </div>
+          <div class="s-qty-row">
+            <span class="s-qty-label">Short answer</span>
+            <div class="s-qty-ctrl">
+              <button type="button" onclick="changeQty('short',-1)">−</button>
+              <span id="q-short">1</span>
+              <button type="button" onclick="changeQty('short',1)">+</button>
+            </div>
+          </div>
+          <div class="s-qty-row">
+            <span class="s-qty-label">Long answer</span>
+            <div class="s-qty-ctrl">
+              <button type="button" onclick="changeQty('long',-1)">−</button>
+              <span id="q-long">0</span>
+              <button type="button" onclick="changeQty('long',1)">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timed practice -->
+      <div class="s-timed-row">
+        <label class="s-toggle-sm">
+          <input type="checkbox" id="p-timed" onchange="toggleTimed()" />
+          <span class="s-toggle-slider-sm"></span>
+        </label>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" style="color:#6b7280;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="s-timed-label">Timed practice</span>
+        <div id="timed-duration-wrap" style="display:none;margin-left:auto;">
+          <input type="number" id="p-duration" class="s-form-input" value="30" min="5" max="180" style="width:70px;" /> min
+        </div>
+      </div>
+
+      <button class="s-generate-btn" id="generate-btn" onclick="generatePracticeTest()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Generate practice test
+      </button>
+    </div>
+  </div>
+
+  <!-- Right: Practice history -->
+  <div class="s-side-col">
+    <div class="s-history-title">Your practice history</div>
+    <div class="s-history-list" id="history-list">
+      {% if history %}
+        {% for h in history %}
+        <div class="s-history-card">
+          <div class="s-history-card-top">
+            <div class="s-history-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div class="s-history-info">
+              <div class="s-history-name">{{ h.topic or h.subject or 'Practice' }} practice</div>
+              <div class="s-history-meta">
+                <span class="s-diff-pill s-diff-pill-{{ h.difficulty }}">{{ h.difficulty|title }}</span>
+                {{ h.q_count or 0 }} questions
+                · {{ h.created_at | time_ago if h.created_at else '' }}
+              </div>
+            </div>
+            {% if h.submitted and h.total_marks %}
+            <div class="s-history-score">
+              {{ ((h.score or 0) / h.total_marks * 100)|round|int }}%
+              <div class="s-history-score-sub">best of 1</div>
+            </div>
+            {% endif %}
+          </div>
+          {% if h.submitted %}
+          <div class="s-history-actions">
+            <a href="{{ url_for('student_take_test', session_id=h.id) }}" class="s-history-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+              Retake
+            </a>
+            <a href="{{ url_for('student_result', session_id=h.id) }}" class="s-history-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+              Latest result
+            </a>
+            <button class="s-history-del" onclick="deleteSession({{ h.id }})">🗑</button>
+          </div>
+          {% else %}
+          <div class="s-history-actions">
+            <a href="{{ url_for('student_take_test', session_id=h.id) }}" class="s-history-btn s-history-btn-primary">
+              Continue →
+            </a>
+            <button class="s-history-del" onclick="deleteSession({{ h.id }})">🗑</button>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="s-history-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" style="color:#d1d5db;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <p>No practice tests yet.<br/>Generate your first one!</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Generating overlay -->
+<div class="s-generating-overlay" id="generating-overlay" style="display:none;">
+  <div class="s-generating-box">
+    <div class="s-spinner"></div>
+    <div class="s-generating-title">Generating your practice test…</div>
+    <div class="s-generating-sub">ChatGPT is drafting questions on <strong id="gen-topic-display"></strong></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedDiff = 'medium';
+
+function setTopic(t) {
+  document.getElementById('p-topic').value = t;
+}
+
+function setDiff(d) {
+  selectedDiff = d;
+  ['easy','medium','hard'].forEach(x => {
+    document.getElementById('diff-'+x).classList.toggle('s-diff-active', x === d);
+  });
+}
+
+function changeQty(type, delta) {
+  const el = document.getElementById('q-'+type);
+  el.textContent = Math.max(0, (parseInt(el.textContent)||0) + delta);
+  updateTotal();
+}
+
+function updateTotal() {
+  const t = ['mcq','multi','short','long'].reduce((s,x) => s + (parseInt(document.getElementById('q-'+x).textContent)||0), 0);
+  document.getElementById('total-q-count').textContent = t;
+}
+
+function toggleTimed() {
+  const checked = document.getElementById('p-timed').checked;
+  document.getElementById('timed-duration-wrap').style.display = checked ? 'flex' : 'none';
+}
+
+async function generatePracticeTest() {
+  const subject = document.getElementById('p-subject').value.trim();
+  const topic = document.getElementById('p-topic').value.trim();
+  if (!topic) { document.getElementById('p-topic').focus(); return showToast('Please enter a topic','error'); }
+  const mcq = parseInt(document.getElementById('q-mcq').textContent)||0;
+  const multi = parseInt(document.getElementById('q-multi').textContent)||0;
+  const short = parseInt(document.getElementById('q-short').textContent)||0;
+  const long = parseInt(document.getElementById('q-long').textContent)||0;
+  if (mcq+multi+short+long === 0) return showToast('Add at least 1 question','error');
+  const timed = document.getElementById('p-timed').checked;
+  const dur = timed ? parseInt(document.getElementById('p-duration').value)||30 : 0;
+
+  document.getElementById('gen-topic-display').textContent = topic;
+  document.getElementById('generating-overlay').style.display = 'flex';
+  document.getElementById('generate-btn').disabled = true;
+
+  try {
+    const resp = await fetch('/api/student/generate-practice', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ subject, topic, difficulty: selectedDiff,
+                             mcq_count: mcq, multi_count: multi,
+                             short_count: short, long_count: long,
+                             timed, duration_minutes: dur })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      window.location.href = `/student/practice/${data.session_id}/take`;
+    } else {
+      showToast(data.error || 'Generation failed', 'error');
+      document.getElementById('generating-overlay').style.display = 'none';
+      document.getElementById('generate-btn').disabled = false;
+    }
+  } catch(e) {
+    showToast('Network error', 'error');
+    document.getElementById('generating-overlay').style.display = 'none';
+    document.getElementById('generate-btn').disabled = false;
+  }
+}
+
+async function deleteSession(id) {
+  if (!confirm('Delete this practice session?')) return;
+  const r = await fetch(`/api/student/practice/${id}`, {method:'DELETE'});
+  const d = await r.json();
+  if (d.success) { showToast('Deleted','info'); setTimeout(()=>location.reload(),400); }
+  else showToast('Failed to delete','error');
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,881 @@
+{% extends "teacher_base.html" %}
+{% block title %}{{ test.title }} — ExamAI Teacher{% endblock %}
+
+{% block breadcrumb %}
+  <div class="t-breadcrumb">
+    <a href="{{ url_for('teacher_tests') }}" class="t-bc-link">{{ test.subject|upper if test.subject else 'TESTS' }}</a>
+    <span class="t-bc-sep">›</span>
+    <span class="t-bc-current">{{ test.status|upper }}</span>
+  </div>
+{% endblock %}
+
+{% block content %}
+<!-- Test Header -->
+<div class="t-test-detail-header">
+  <div class="t-test-detail-info">
+    <div class="t-test-detail-subject">{{ test.subject|upper if test.subject else '' }}</div>
+    <h1 class="t-test-detail-title">{{ test.title }}</h1>
+    <div class="t-test-detail-meta">
+      {{ questions|length }} question{{ 's' if questions|length != 1 }} ·
+      {{ test.total_marks or 0 }} marks ·
+      {{ test.duration_minutes or 30 }} min
+    </div>
+  </div>
+  <div class="t-test-detail-actions">
+    <a href="#" class="btn-t-outline btn-t-results">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Results
+    </a>
+    {% if test.status == 'draft' %}
+    <button class="btn-t-primary" id="publish-btn" onclick="publishTest({{ test.id }})">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Publish
+    </button>
+    {% else %}
+    <span class="t-published-badge">● Published</span>
+    {% endif %}
+    <button class="btn-t-icon" onclick="showMoreMenu(this)">···</button>
+  </div>
+</div>
+
+<!-- Stepper -->
+<div class="t-stepper t-stepper-detail">
+  <div class="t-step {% if questions %}t-step-done{% else %}t-step-active{% endif %}">
+    <div class="t-step-circle {% if questions %}t-step-circle-done{% else %}t-step-circle-active{% endif %}">
+      {% if questions %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>{% else %}1{% endif %}
+    </div>
+    <div class="t-step-label">Details &amp; rules</div>
+  </div>
+  <div class="t-step-line {% if questions %}t-step-line-done{% endif %}"></div>
+  <div class="t-step {% if tab == 'questions' and questions %}t-step-active{% elif questions %}t-step-done{% else %}t-step-inactive{% endif %}">
+    <div class="t-step-circle {% if tab == 'questions' %}t-step-circle-active{% elif questions %}t-step-circle-done{% endif %}">
+      {% if questions and tab != 'questions' %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>{% else %}2{% endif %}
+    </div>
+    <div class="t-step-label">Questions</div>
+  </div>
+  <div class="t-step-line"></div>
+  <div class="t-step {% if tab == 'students' %}t-step-active{% else %}t-step-inactive{% endif %}">
+    <div class="t-step-circle {% if tab == 'students' %}t-step-circle-active{% endif %}">3</div>
+    <div class="t-step-label">Assign students</div>
+  </div>
+  <div class="t-step-line"></div>
+  <div class="t-step {% if test.status == 'published' %}t-step-done{% else %}t-step-inactive{% endif %}">
+    <div class="t-step-circle">4</div>
+    <div class="t-step-label">Publish</div>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="t-tab-bar">
+  <a href="{{ url_for('teacher_test_detail', test_id=test.id, tab='questions') }}"
+     class="t-tab {% if tab == 'questions' %}t-tab-active{% endif %}">
+    Questions <span class="t-tab-count">{{ questions|length }}</span>
+  </a>
+  <a href="{{ url_for('teacher_test_detail', test_id=test.id, tab='details') }}"
+     class="t-tab {% if tab == 'details' %}t-tab-active{% endif %}">
+    Details &amp; rules
+  </a>
+  <a href="{{ url_for('teacher_test_detail', test_id=test.id, tab='students') }}"
+     class="t-tab {% if tab == 'students' %}t-tab-active{% endif %}">
+    Students <span class="t-tab-count">{{ assigned_count }}</span>
+  </a>
+</div>
+
+<!-- =================== QUESTIONS TAB =================== -->
+{% if tab == 'questions' %}
+<div class="t-questions-layout">
+  <div class="t-questions-main">
+    {% if not questions %}
+    <div class="t-empty-state t-empty-questions">
+      <div class="t-empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="48" height="48" style="color:#c9d0dc;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      </div>
+      <div class="t-empty-title">No questions yet</div>
+      <div class="t-empty-desc">Write your own or let AI draft a set for you to review.</div>
+      <div class="t-empty-btns">
+        <button class="btn-t-primary" onclick="openAIModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Generate with AI
+        </button>
+        <button class="btn-t-outline" onclick="openAddQuestionModal()">+ Add manually</button>
+      </div>
+    </div>
+    {% else %}
+    <div class="t-question-list" id="question-list">
+      {% for q in questions %}
+      <div class="t-question-item" data-qid="{{ q.id }}">
+        <div class="t-q-num">{{ loop.index }}</div>
+        <div class="t-q-body">
+          <div class="t-q-badges">
+            <span class="t-q-type-badge">{{ q.question_type|replace('_',' ')|title }}</span>
+            <span class="t-q-diff-badge t-diff-{{ q.difficulty }}">{{ q.difficulty|title }}</span>
+            <span class="t-q-marks">{{ q.marks }} mark{{ 's' if q.marks != 1 }}</span>
+          </div>
+          <div class="t-q-text">{{ q.question_text }}</div>
+          {% if q.options_parsed %}
+          <div class="t-q-options-mini">
+            {% for opt in q.options_parsed[:4] %}
+            <span class="t-q-opt {% if opt.id == q.correct_answer %}t-q-opt-correct{% endif %}">
+              {{ opt.id }}. {{ opt.text[:40] }}{% if opt.text|length > 40 %}…{% endif %}
+            </span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        <div class="t-q-actions">
+          <button class="t-q-action-btn" onclick="deleteQuestion({{ q.id }}, {{ test.id }})" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right panel -->
+  <div class="t-questions-side">
+    <div class="t-side-card">
+      <button class="btn-t-primary t-side-full-btn" onclick="openAIModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Generate with AI
+      </button>
+      <button class="btn-t-outline t-side-full-btn" style="margin-top:0.5rem;" onclick="openAddQuestionModal()">
+        + Add question
+      </button>
+    </div>
+    <div class="t-side-card" style="margin-top:1rem;">
+      <div class="t-side-card-title">Paper summary</div>
+      <div class="t-paper-row">
+        <span>Total marks</span>
+        <span id="total-marks-display">{{ test.total_marks or 0 }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== DETAILS TAB =================== -->
+{% elif tab == 'details' %}
+<form class="t-create-form-layout" id="details-form">
+  <div class="t-create-left">
+    <div class="t-form-section">
+      <div class="t-form-section-title">Test details</div>
+      <div class="t-form-section-sub">What students will see before they start.</div>
+      <div class="t-form-group">
+        <label class="t-form-label">Title</label>
+        <input type="text" id="e-title" class="t-form-input" value="{{ test.title }}" required />
+      </div>
+      <div class="t-form-row-2">
+        <div class="t-form-group">
+          <label class="t-form-label">Subject</label>
+          <input type="text" id="e-subject" class="t-form-input" value="{{ test.subject or '' }}" />
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Topic</label>
+          <input type="text" id="e-topic" class="t-form-input" value="{{ test.topic or '' }}" />
+          <span class="t-form-hint">Used as the default topic for AI-generated questions</span>
+        </div>
+      </div>
+      <div class="t-form-group">
+        <label class="t-form-label">Description</label>
+        <textarea id="e-description" class="t-form-textarea" rows="3">{{ test.description or '' }}</textarea>
+      </div>
+      <div class="t-form-group">
+        <label class="t-form-label">Instructions for students</label>
+        <textarea id="e-instructions" class="t-form-textarea t-form-textarea-tall" rows="4">{{ test.instructions or '' }}</textarea>
+      </div>
+      <div class="t-form-row-3">
+        <div class="t-form-group">
+          <label class="t-form-label">Difficulty</label>
+          <select id="e-difficulty" class="t-form-select">
+            <option value="easy" {% if test.difficulty == 'easy' %}selected{% endif %}>Easy</option>
+            <option value="medium" {% if test.difficulty == 'medium' or not test.difficulty %}selected{% endif %}>Medium</option>
+            <option value="hard" {% if test.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+          </select>
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Duration (minutes)</label>
+          <input type="number" id="e-duration" class="t-form-input" value="{{ test.duration_minutes or 30 }}" min="1" max="300" />
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Max tab switches</label>
+          <input type="number" id="e-tabs" class="t-form-input" value="{{ test.max_tab_switches or 3 }}" min="0" max="20" />
+          <span class="t-form-hint">Before the session is flagged</span>
+        </div>
+      </div>
+      <div class="t-form-actions">
+        <button type="submit" class="btn-t-primary" id="save-btn">Save changes</button>
+      </div>
+    </div>
+  </div>
+  <div class="t-create-right">
+    <div class="t-form-section t-rules-card">
+      <div class="t-form-section-title">Rules &amp; integrity</div>
+      <div class="t-form-section-sub">Proctoring signals never change marks; they inform your review.</div>
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+        <div class="t-rule-info"><div class="t-rule-title">AI webcam proctoring</div><div class="t-rule-desc">Face presence, multiple faces, gaze and tab-switch monitoring</div></div>
+        <label class="t-toggle"><input type="checkbox" id="e-proctoring" {% if test.ai_proctoring %}checked{% endif %}/><span class="t-toggle-slider"></span></label>
+      </div>
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-grey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div class="t-rule-info"><div class="t-rule-title">Negative marking</div><div class="t-rule-desc">Deduct each question's negative marks for wrong objective answers</div></div>
+        <label class="t-toggle"><input type="checkbox" id="e-negative" {% if test.negative_marking %}checked{% endif %}/><span class="t-toggle-slider"></span></label>
+      </div>
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
+        <div class="t-rule-info"><div class="t-rule-title">Shuffle questions</div><div class="t-rule-desc">Every student gets a different question order</div></div>
+        <label class="t-toggle"><input type="checkbox" id="e-shuffle-q" {% if test.shuffle_questions %}checked{% endif %}/><span class="t-toggle-slider"></span></label>
+      </div>
+      <div class="t-rule-row">
+        <div class="t-rule-icon t-rule-icon-teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></div>
+        <div class="t-rule-info"><div class="t-rule-title">Shuffle options</div><div class="t-rule-desc">Randomise MCQ option order per student</div></div>
+        <label class="t-toggle"><input type="checkbox" id="e-shuffle-o" {% if test.shuffle_options %}checked{% endif %}/><span class="t-toggle-slider"></span></label>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- =================== STUDENTS TAB =================== -->
+{% elif tab == 'students' %}
+<div class="t-students-split">
+  <!-- Left: Add students -->
+  <div class="t-students-left">
+    <div class="t-students-panel">
+      <div class="t-students-panel-title">Add students</div>
+      <div class="t-students-panel-sub">Only approved student accounts are listed.</div>
+      <div class="t-search-box" style="margin:1rem 0;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="student-search" class="t-search-input"
+               placeholder="Search by name, email, roll no or class..." oninput="filterStudents(this.value)" />
+      </div>
+      <div class="t-select-all-row">
+        <label class="t-checkbox-label">
+          <input type="checkbox" id="select-all-cb" onchange="selectAll(this.checked)" />
+          <span>Select all ({{ available_students|length }})</span>
+        </label>
+        <button class="btn-t-assign" onclick="assignSelected()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Assign
+        </button>
+      </div>
+      <div class="t-student-add-list" id="student-add-list">
+        {% set avatar_colors = ['#059669','#0891b2','#7c3aed','#dc2626','#d97706','#0284c7'] %}
+        {% for s in available_students %}
+        {% set color = avatar_colors[loop.index0 % avatar_colors|length] %}
+        <label class="t-student-add-row" data-name="{{ s.first_name }} {{ s.last_name }}" data-email="{{ s.email }}">
+          <input type="checkbox" class="t-student-cb" value="{{ s.id }}" />
+          <div class="t-student-av-sm" style="background:{{ color }};">{{ s.first_name[:1]|upper }}{{ s.last_name[:1]|upper }}</div>
+          <div class="t-student-add-info">
+            <div class="t-student-add-name">{{ s.first_name }} {{ s.last_name }}</div>
+            <div class="t-student-add-meta">{{ s.email }}{% if s.roll_number %} · {{ s.roll_number }}{% endif %}{% if s.class_name %} · {{ s.class_name }}{% endif %}</div>
+          </div>
+        </label>
+        {% endfor %}
+        {% if not available_students %}
+        <div class="t-empty-desc" style="padding:1.5rem 0 0;">All approved students have been assigned.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Assigned -->
+  <div class="t-students-right">
+    <div class="t-students-panel">
+      <div class="t-students-panel-title">Assigned <span class="t-assigned-count" id="assigned-count">{{ assigned_count }}</span></div>
+      <div class="t-students-panel-sub">These students will see this test once it's published.</div>
+      <div class="t-assigned-list" id="assigned-list">
+        {% if students_assigned %}
+          {% for s in students_assigned %}
+          {% set color = avatar_colors[loop.index0 % avatar_colors|length] %}
+          <div class="t-assigned-row" data-sid="{{ s.id }}">
+            <div class="t-student-av-sm" style="background:{{ color }};">{{ s.first_name[:1]|upper }}{{ s.last_name[:1]|upper }}</div>
+            <div class="t-student-add-info">
+              <div class="t-student-add-name">{{ s.first_name }} {{ s.last_name }}</div>
+              <div class="t-student-add-meta">{{ s.email }}</div>
+            </div>
+            <button class="t-unassign-btn" onclick="unassignStudent({{ s.id }}, this)" title="Remove">✕</button>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="t-empty-state" style="padding:2rem 0;" id="assigned-empty">
+          <div class="t-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" width="40" height="40" style="color:#c9d0dc;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="t-empty-title">No students yet</div>
+          <div class="t-empty-desc">Select students on the left to assign this test.</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ===== MODAL: Add Question ===== -->
+<div class="t-modal-overlay" id="add-q-modal" onclick="closeModal('add-q-modal')">
+  <div class="t-modal-box" onclick="event.stopPropagation()">
+    <div class="t-modal-header">
+      <h3>New question</h3>
+      <button class="t-modal-close" onclick="closeModal('add-q-modal')">✕</button>
+    </div>
+    <div class="t-modal-body">
+      <div class="t-modal-row-3">
+        <div class="t-form-group">
+          <label class="t-form-label">Type</label>
+          <select id="q-type" class="t-form-select" onchange="toggleOptionFields()">
+            <option value="mcq">Multiple choice</option>
+            <option value="multi_select">Multi-select</option>
+            <option value="short_answer">Short answer</option>
+            <option value="long_answer">Long answer</option>
+          </select>
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Difficulty</label>
+          <select id="q-diff" class="t-form-select">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Marks</label>
+          <input type="number" id="q-marks" class="t-form-input" value="1" min="1" />
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Negative</label>
+          <input type="number" id="q-neg" class="t-form-input" value="0" min="0" />
+        </div>
+      </div>
+      <div class="t-form-group">
+        <label class="t-form-label">Question text <span class="required">*</span></label>
+        <textarea id="q-text" class="t-form-textarea" rows="3" placeholder="Enter your question here..."></textarea>
+      </div>
+
+      <!-- MCQ / Multi-select options -->
+      <div id="options-section">
+        <div class="t-options-header">
+          <label class="t-form-label">Options</label>
+          <span class="t-options-hint">Click the circle to mark the one correct answer</span>
+        </div>
+        <div id="options-list">
+          <div class="t-option-row" data-opt="A">
+            <button class="t-opt-radio t-opt-correct" type="button" onclick="selectCorrect('A')" title="Mark as correct">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="3" fill="none"/></svg>
+            </button>
+            <span class="t-opt-letter">A</span>
+            <input type="text" class="t-form-input" placeholder="Option A" value="" />
+            <button class="t-opt-del" type="button" onclick="removeOption(this)" title="Delete">🗑</button>
+          </div>
+          <div class="t-option-row" data-opt="B">
+            <button class="t-opt-radio" type="button" onclick="selectCorrect('B')" title="Mark as correct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg></button>
+            <span class="t-opt-letter">B</span>
+            <input type="text" class="t-form-input" placeholder="Option B" />
+            <button class="t-opt-del" type="button" onclick="removeOption(this)">🗑</button>
+          </div>
+          <div class="t-option-row" data-opt="C">
+            <button class="t-opt-radio" type="button" onclick="selectCorrect('C')" title="Mark as correct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg></button>
+            <span class="t-opt-letter">C</span>
+            <input type="text" class="t-form-input" placeholder="Option C" />
+            <button class="t-opt-del" type="button" onclick="removeOption(this)">🗑</button>
+          </div>
+          <div class="t-option-row" data-opt="D">
+            <button class="t-opt-radio" type="button" onclick="selectCorrect('D')" title="Mark as correct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg></button>
+            <span class="t-opt-letter">D</span>
+            <input type="text" class="t-form-input" placeholder="Option D" />
+            <button class="t-opt-del" type="button" onclick="removeOption(this)">🗑</button>
+          </div>
+        </div>
+        <button class="t-add-option-btn" type="button" onclick="addOption()">+ Add option</button>
+      </div>
+
+      <div class="t-form-group" style="margin-top:1rem;">
+        <label class="t-form-label">Explanation <span style="font-weight:400;color:#9ca3af;">(shown to students after the test)</span></label>
+        <textarea id="q-explanation" class="t-form-textarea" rows="2" placeholder="Why the correct answer is correct..."></textarea>
+      </div>
+    </div>
+    <div class="t-modal-footer">
+      <button class="btn-t-outline" onclick="closeModal('add-q-modal')">Cancel</button>
+      <button class="btn-t-primary" onclick="submitQuestion()">Add question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL: Generate with AI ===== -->
+<div class="t-modal-overlay" id="ai-modal" onclick="closeModal('ai-modal')">
+  <div class="t-modal-box t-modal-wide" onclick="event.stopPropagation()">
+    <div class="t-modal-header">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" style="vertical-align:middle;margin-right:6px;color:#059669;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Generate questions with AI
+      </h3>
+      <button class="t-modal-close" onclick="closeModal('ai-modal')">✕</button>
+    </div>
+
+    <!-- Step 1: Configure -->
+    <div id="ai-step-1">
+      <div class="t-modal-body">
+        <p class="t-modal-sub">Uses ChatGPT, with Gemini as a fallback. Subject: <strong>{{ test.subject or test.title }}</strong>.</p>
+        <div class="t-form-row-2">
+          <div class="t-form-group">
+            <label class="t-form-label">Topic</label>
+            <input type="text" id="ai-topic" class="t-form-input" value="{{ test.topic or test.subject or '' }}" placeholder="e.g. laws of thermodynamics" />
+          </div>
+          <div class="t-form-group">
+            <label class="t-form-label">Difficulty</label>
+            <select id="ai-difficulty" class="t-form-select">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">How many of each type?</label>
+          <div class="t-qty-grid">
+            <div class="t-qty-row">
+              <span class="t-qty-label">Multiple choice</span>
+              <div class="t-qty-ctrl">
+                <button type="button" onclick="changeQty('mcq',-1)">−</button>
+                <span id="qty-mcq">5</span>
+                <button type="button" onclick="changeQty('mcq',1)">+</button>
+              </div>
+            </div>
+            <div class="t-qty-row">
+              <span class="t-qty-label">Multi-select</span>
+              <div class="t-qty-ctrl">
+                <button type="button" onclick="changeQty('multi',−1)">−</button>
+                <span id="qty-multi">0</span>
+                <button type="button" onclick="changeQty('multi',1)">+</button>
+              </div>
+            </div>
+            <div class="t-qty-row">
+              <span class="t-qty-label">Short answer</span>
+              <div class="t-qty-ctrl">
+                <button type="button" onclick="changeQty('short',-1)">−</button>
+                <span id="qty-short">2</span>
+                <button type="button" onclick="changeQty('short',1)">+</button>
+              </div>
+            </div>
+            <div class="t-qty-row">
+              <span class="t-qty-label">Long answer</span>
+              <div class="t-qty-ctrl">
+                <button type="button" onclick="changeQty('long',-1)">−</button>
+                <span id="qty-long">0</span>
+                <button type="button" onclick="changeQty('long',1)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="t-form-group">
+          <label class="t-form-label">Extra instructions <span style="font-weight:400;color:#9ca3af;">(optional)</span></label>
+          <textarea id="ai-extra" class="t-form-textarea" rows="2"
+                    placeholder="e.g. Focus on real-world applications; include one numerical problem."></textarea>
+        </div>
+      </div>
+      <div class="t-modal-footer">
+        <button class="btn-t-outline" onclick="closeModal('ai-modal')">Cancel</button>
+        <button class="btn-t-primary" id="ai-generate-btn" onclick="generateWithAI()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Generate <span id="ai-total-count">7</span> questions
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Review -->
+    <div id="ai-step-2" style="display:none;">
+      <div class="t-modal-body">
+        <p class="t-modal-sub">Pick the questions to add. You can edit any of them afterwards.</p>
+        <div id="ai-questions-list" class="t-ai-questions-list"></div>
+      </div>
+      <div class="t-modal-footer">
+        <button class="btn-t-outline" onclick="showAIStep(1)">← Back</button>
+        <button class="btn-t-primary" id="ai-add-btn" onclick="addSelectedAIQuestions()">
+          Add <span id="ai-selected-count">0</span> selected
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TEST_ID = {{ test.id }};
+let currentCorrect = 'A';
+let optionLetters = ['A','B','C','D'];
+let aiGeneratedQuestions = [];
+
+// ── Modal helpers ──
+function openAddQuestionModal() {
+  resetQuestionModal();
+  document.getElementById('add-q-modal').classList.add('open');
+}
+function openAIModal() {
+  updateAITotal();
+  document.getElementById('ai-modal').classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function resetQuestionModal() {
+  document.getElementById('q-type').value = 'mcq';
+  document.getElementById('q-diff').value = 'medium';
+  document.getElementById('q-marks').value = '1';
+  document.getElementById('q-neg').value = '0';
+  document.getElementById('q-text').value = '';
+  document.getElementById('q-explanation').value = '';
+  currentCorrect = 'A';
+  document.getElementById('options-section').style.display = '';
+  // Reset options to default 4
+  document.getElementById('options-list').innerHTML = `
+    <div class="t-option-row" data-opt="A">
+      <button class="t-opt-radio t-opt-correct" type="button" onclick="selectCorrect('A')" title="Mark as correct">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="3" fill="none"/></svg>
+      </button>
+      <span class="t-opt-letter">A</span>
+      <input type="text" class="t-form-input" placeholder="Option A" />
+      <button class="t-opt-del" type="button" onclick="removeOption(this)">🗑</button>
+    </div>
+    ${['B','C','D'].map(l => `
+    <div class="t-option-row" data-opt="${l}">
+      <button class="t-opt-radio" type="button" onclick="selectCorrect('${l}')" title="Mark as correct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg></button>
+      <span class="t-opt-letter">${l}</span>
+      <input type="text" class="t-form-input" placeholder="Option ${l}" />
+      <button class="t-opt-del" type="button" onclick="removeOption(this)">🗑</button>
+    </div>`).join('')}
+  `;
+  optionLetters = ['A','B','C','D'];
+}
+
+function toggleOptionFields() {
+  const type = document.getElementById('q-type').value;
+  const sec = document.getElementById('options-section');
+  sec.style.display = (type === 'short_answer' || type === 'long_answer') ? 'none' : '';
+}
+
+function selectCorrect(letter) {
+  currentCorrect = letter;
+  document.querySelectorAll('.t-option-row').forEach(row => {
+    const btn = row.querySelector('.t-opt-radio');
+    if (row.dataset.opt === letter) {
+      btn.classList.add('t-opt-correct');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="3" fill="none"/></svg>';
+    } else {
+      btn.classList.remove('t-opt-correct');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg>';
+    }
+  });
+}
+
+function addOption() {
+  const letters = ['A','B','C','D','E','F','G'];
+  const nextIdx = document.querySelectorAll('.t-option-row').length;
+  if (nextIdx >= letters.length) return;
+  const letter = letters[nextIdx];
+  const div = document.createElement('div');
+  div.className = 't-option-row';
+  div.dataset.opt = letter;
+  div.innerHTML = `
+    <button class="t-opt-radio" type="button" onclick="selectCorrect('${letter}')" title="Mark as correct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg></button>
+    <span class="t-opt-letter">${letter}</span>
+    <input type="text" class="t-form-input" placeholder="Option ${letter}" />
+    <button class="t-opt-del" type="button" onclick="removeOption(this)">🗑</button>
+  `;
+  document.getElementById('options-list').appendChild(div);
+}
+
+function removeOption(btn) {
+  const row = btn.closest('.t-option-row');
+  if (document.querySelectorAll('.t-option-row').length <= 2) return showToast('Minimum 2 options required','error');
+  row.remove();
+}
+
+async function submitQuestion() {
+  const text = document.getElementById('q-text').value.trim();
+  if (!text) return showToast('Question text is required', 'error');
+  const type = document.getElementById('q-type').value;
+  const diff = document.getElementById('q-diff').value;
+  const marks = parseInt(document.getElementById('q-marks').value) || 1;
+  const neg = parseInt(document.getElementById('q-neg').value) || 0;
+  const explanation = document.getElementById('q-explanation').value.trim();
+
+  let options_json = null;
+  let correct_answer = null;
+  if (type === 'mcq' || type === 'multi_select') {
+    const rows = document.querySelectorAll('.t-option-row');
+    options_json = [];
+    rows.forEach(row => {
+      const input = row.querySelector('input[type="text"]');
+      if (input && input.value.trim()) {
+        options_json.push({ id: row.dataset.opt, text: input.value.trim() });
+      }
+    });
+    if (options_json.length < 2) return showToast('Please add at least 2 options', 'error');
+    correct_answer = currentCorrect;
+  }
+
+  const payload = { question_text: text, question_type: type, difficulty: diff,
+                    marks, negative_marks: neg, explanation, options_json, correct_answer };
+
+  try {
+    const resp = await fetch(`/api/teacher/tests/${TEST_ID}/questions`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      showToast('Question added!', 'success');
+      closeModal('add-q-modal');
+      setTimeout(() => location.reload(), 400);
+    } else {
+      showToast(data.error || 'Failed to add question', 'error');
+    }
+  } catch { showToast('Network error', 'error'); }
+}
+
+async function deleteQuestion(qId, testId) {
+  if (!confirm('Delete this question?')) return;
+  const resp = await fetch(`/api/teacher/tests/${testId}/questions/${qId}`, { method: 'DELETE' });
+  const data = await resp.json();
+  if (data.success) {
+    showToast('Question deleted', 'success');
+    setTimeout(() => location.reload(), 400);
+  } else showToast('Failed to delete', 'error');
+}
+
+// ── AI Generation ──
+function changeQty(type, delta) {
+  const el = document.getElementById(`qty-${type}`);
+  const cur = parseInt(el.textContent) || 0;
+  el.textContent = Math.max(0, cur + delta);
+  updateAITotal();
+}
+
+function updateAITotal() {
+  const types = ['mcq','multi','short','long'];
+  const total = types.reduce((s,t) => {
+    const el = document.getElementById(`qty-${t}`);
+    return s + (el ? parseInt(el.textContent) || 0 : 0);
+  }, 0);
+  const el = document.getElementById('ai-total-count');
+  if (el) el.textContent = total;
+}
+
+function showAIStep(n) {
+  document.getElementById('ai-step-1').style.display = n === 1 ? '' : 'none';
+  document.getElementById('ai-step-2').style.display = n === 2 ? '' : 'none';
+}
+
+async function generateWithAI() {
+  const topic = document.getElementById('ai-topic').value.trim();
+  if (!topic) return showToast('Please enter a topic', 'error');
+  const mcq_count = parseInt(document.getElementById('qty-mcq').textContent) || 0;
+  const multi_count = parseInt(document.getElementById('qty-multi').textContent) || 0;
+  const short_count = parseInt(document.getElementById('qty-short').textContent) || 0;
+  const long_count = parseInt(document.getElementById('qty-long').textContent) || 0;
+  const total = mcq_count + multi_count + short_count + long_count;
+  if (total === 0) return showToast('Select at least 1 question', 'error');
+
+  const btn = document.getElementById('ai-generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  try {
+    const resp = await fetch('/api/teacher/generate-questions', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        topic, difficulty: document.getElementById('ai-difficulty').value,
+        mcq_count, multi_count, short_count, long_count,
+        extra_instructions: document.getElementById('ai-extra').value.trim()
+      })
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'AI failed');
+    aiGeneratedQuestions = data.questions;
+    renderAIQuestions(data.questions);
+    showAIStep(2);
+  } catch(e) {
+    showToast(e.message || 'AI generation failed', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Generate <span id="ai-total-count">${document.getElementById('ai-total-count').textContent}</span> questions`;
+  }
+}
+
+function renderAIQuestions(questions) {
+  const list = document.getElementById('ai-questions-list');
+  list.innerHTML = questions.map((q, i) => {
+    const opts = (q.options || []).map(opt => {
+      const isCorrect = opt.id === q.correct_answer ||
+                        (Array.isArray(q.correct_answers) && q.correct_answers.includes(opt.id));
+      return `<div class="t-ai-opt ${isCorrect ? 't-ai-opt-correct' : ''}">
+        <span class="t-ai-opt-letter">${opt.id}.</span> ${opt.text}
+        ${isCorrect ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="12" height="12" style="margin-left:4px;color:#059669;"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+      </div>`;
+    }).join('');
+    return `
+    <div class="t-ai-q-card" data-idx="${i}">
+      <label class="t-ai-q-select">
+        <input type="checkbox" class="t-ai-cb" checked onchange="updateAISelectedCount()" />
+        <div class="t-ai-q-content">
+          <div class="t-ai-q-badges">
+            <span class="t-q-type-badge">${q.question_type.replace('_',' ')}</span>
+            <span class="t-q-diff-badge t-diff-${q.difficulty}">${q.difficulty}</span>
+            <span class="t-ai-badge">✦ AI</span>
+            <span style="margin-left:auto;font-size:0.8rem;color:#6b7280;">${q.marks} mark${q.marks!=1?'s':''}</span>
+          </div>
+          <div class="t-ai-q-text">${q.question_text}</div>
+          ${opts ? `<div class="t-ai-opts-grid">${opts}</div>` : ''}
+        </div>
+      </label>
+    </div>`;
+  }).join('');
+  updateAISelectedCount();
+}
+
+function updateAISelectedCount() {
+  const checked = document.querySelectorAll('.t-ai-cb:checked').length;
+  document.getElementById('ai-selected-count').textContent = checked;
+}
+
+async function addSelectedAIQuestions() {
+  const checkboxes = document.querySelectorAll('.t-ai-cb:checked');
+  if (!checkboxes.length) return showToast('Select at least 1 question', 'error');
+  const btn = document.getElementById('ai-add-btn');
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+  let added = 0;
+  for (const cb of checkboxes) {
+    const idx = parseInt(cb.closest('[data-idx]').dataset.idx);
+    const q = aiGeneratedQuestions[idx];
+    const payload = {
+      question_text: q.question_text,
+      question_type: q.question_type,
+      difficulty: q.difficulty,
+      marks: q.marks || 1,
+      options_json: q.options || null,
+      correct_answer: q.correct_answer || null,
+      correct_answers_json: q.correct_answers || null,
+      expected_answer: q.expected_answer || null,
+      explanation: q.explanation || ''
+    };
+    try {
+      const r = await fetch(`/api/teacher/tests/${TEST_ID}/questions`, {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const d = await r.json();
+      if (d.success) added++;
+    } catch {}
+  }
+  showToast(`Added ${added} question${added!==1?'s':''}!`, 'success');
+  closeModal('ai-modal');
+  setTimeout(() => location.reload(), 600);
+}
+
+// ── Publish ──
+async function publishTest(testId) {
+  if (!confirm('Publish this test? Students will be able to take it.')) return;
+  const resp = await fetch(`/api/teacher/tests/${testId}/publish`, { method: 'POST' });
+  const data = await resp.json();
+  if (data.success) {
+    showToast('Test published!', 'success');
+    setTimeout(() => location.reload(), 600);
+  } else showToast('Failed to publish', 'error');
+}
+
+// ── Save Details ──
+{% if tab == 'details' %}
+document.getElementById('details-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const payload = {
+    title: document.getElementById('e-title').value.trim(),
+    subject: document.getElementById('e-subject').value.trim(),
+    topic: document.getElementById('e-topic').value.trim(),
+    description: document.getElementById('e-description').value.trim(),
+    instructions: document.getElementById('e-instructions').value.trim(),
+    difficulty: document.getElementById('e-difficulty').value,
+    duration_minutes: parseInt(document.getElementById('e-duration').value) || 30,
+    max_tab_switches: parseInt(document.getElementById('e-tabs').value) || 3,
+    ai_proctoring: document.getElementById('e-proctoring').checked ? 1 : 0,
+    negative_marking: document.getElementById('e-negative').checked ? 1 : 0,
+    shuffle_questions: document.getElementById('e-shuffle-q').checked ? 1 : 0,
+    shuffle_options: document.getElementById('e-shuffle-o').checked ? 1 : 0,
+  };
+  try {
+    const resp = await fetch(`/api/teacher/tests/${TEST_ID}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (data.success) showToast('Changes saved!', 'success');
+    else showToast(data.error || 'Failed to save', 'error');
+  } catch { showToast('Network error', 'error'); }
+  btn.disabled = false; btn.textContent = 'Save changes';
+});
+{% endif %}
+
+// ── Students tab ──
+function filterStudents(query) {
+  const rows = document.querySelectorAll('.t-student-add-row');
+  const q = query.toLowerCase();
+  rows.forEach(row => {
+    const name = (row.dataset.name || '').toLowerCase();
+    const email = (row.dataset.email || '').toLowerCase();
+    row.style.display = (!q || name.includes(q) || email.includes(q)) ? '' : 'none';
+  });
+}
+
+function selectAll(checked) {
+  document.querySelectorAll('.t-student-cb').forEach(cb => {
+    const row = cb.closest('.t-student-add-row');
+    if (!row || row.style.display !== 'none') cb.checked = checked;
+  });
+}
+
+async function assignSelected() {
+  const ids = [...document.querySelectorAll('.t-student-cb:checked')].map(cb => parseInt(cb.value));
+  if (!ids.length) return showToast('Select at least one student', 'error');
+  const resp = await fetch(`/api/teacher/tests/${TEST_ID}/students`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ student_ids: ids })
+  });
+  const data = await resp.json();
+  if (data.success) {
+    showToast(`Assigned ${data.added} student${data.added!==1?'s':''}!`, 'success');
+    setTimeout(() => location.reload(), 500);
+  } else showToast(data.error || 'Failed to assign', 'error');
+}
+
+async function unassignStudent(sid, btn) {
+  const resp = await fetch(`/api/teacher/tests/${TEST_ID}/students`, {
+    method: 'DELETE', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ student_ids: [sid] })
+  });
+  const data = await resp.json();
+  if (data.success) {
+    btn.closest('.t-assigned-row').remove();
+    const cnt = document.getElementById('assigned-count');
+    if (cnt) cnt.textContent = parseInt(cnt.textContent) - 1;
+    showToast('Student removed', 'info');
+  } else showToast('Failed to remove', 'error');
+}
+
+// Update total marks display dynamically
+function updateTotalMarks(val) {
+  const el = document.getElementById('total-marks-display');
+  if (el) el.textContent = val;
+}
+
+// Keyboard: close modals with Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['add-q-modal','ai-modal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.classList.contains('open')) el.classList.remove('open');
+    });
+  }
+});
+</script>
+{% endblock %}
